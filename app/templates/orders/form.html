@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar pedido' if order else 'Nuevo pedido' }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>{{ 'Editar ' ~ order.display_name if order else 'Nuevo pedido' }}</h1>
+  <a class="btn btn-ghost btn-sm" href="{{ '/pedidos/' ~ order.id if order else '/pedidos' }}">Cancelar</a>
+</div>
+
+<form method="post" action="{{ '/pedidos/' ~ order.id if order else '/pedidos' }}" class="stack">
+  <div class="card">
+    {% if not order %}<p class="hint">Se va a llamar <strong>Pedido N°{{ next_num }}</strong>.</p>{% endif %}
+    <div class="field">
+      <label for="title">Nombre (opcional)</label>
+      <input id="title" name="title" value="{{ form.title or '' }}"
+             placeholder="Ej: Primer pedido / Reposición verano" maxlength="160">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="date">Fecha del pedido *</label>
+        <input id="date" name="date" type="date" value="{{ form.date }}" required>
+      </div>
+      <div class="field">
+        <label for="status">Estado</label>
+        <select id="status" name="status">
+          {% for code, label in OPTIONS['order_status'] %}
+            <option value="{{ code }}" {{ 'selected' if form.status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="markup_pct">Margen para el precio de venta (%)</label>
+      <input id="markup_pct" name="markup_pct" inputmode="decimal" value="{{ form.markup_pct or '150' }}">
+      <div class="hint">150% = vender a 2,5× el costo. Lo podés cambiar cuando quieras; el detalle del pedido te muestra varios escenarios igual.</div>
+    </div>
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes">{{ form.notes or '' }}</textarea>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-block" type="submit">
+    {{ 'Guardar cambios' if order else 'Crear pedido' }}
+  </button>
+  <div class="fab-space"></div>
+</form>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Compras{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Compras</h1>
+  <a class="btn btn-primary btn-sm" href="/compras/nueva">+ Nueva</a>
+</div>
+
+<div class="tile" style="margin-bottom:14px">
+  <div class="k">Total importado (USD)</div><div class="v">{{ total_usd | usd }}</div>
+</div>
+
+{% if purchases %}
+<div class="list">
+  {% for c in purchases %}
+    <a class="item" href="/compras/{{ c.id }}">
+      <div class="item-top">
+        <span class="item-title">{{ c.supplier }}</span>
+        <span class="item-amount">{{ c.total_usd | usd }}</span>
+      </div>
+      <div class="item-sub">
+        {{ c.date | fecha }}
+        · <span class="badge badge-info">{{ label_for('shipment_status', c.shipment_status) }}</span>
+        {% if c.invoice_number %}· Factura {{ c.invoice_number }}{% endif %}
+        · {{ c.items | length }} ítem(s)
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">📦</div>
+    <p>No hay compras cargadas.</p>
+    <a class="btn btn-primary" href="/compras/nueva">Cargar una compra</a>
+  </div>
+{% endif %}
+{% endblock %}

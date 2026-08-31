@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Pagos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Pagos</h1>
+  <a class="btn btn-primary btn-sm" href="/pagos/nuevo">+ Nuevo</a>
+</div>
+
+<form method="get" action="/pagos" class="card card-tight">
+  <div class="grid-2">
+    <div class="field" style="margin-bottom:0">
+      <label for="mes-sel">Mes</label>
+      <select id="mes-sel" name="mes" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for code, label in (months if months is defined else []) %}
+          <option value="{{ code }}" {{ 'selected' if mes == code }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="ped-sel">Pedido / tipo</label>
+      <select id="ped-sel" name="pedido" onchange="this.form.submit()">
+        <option value="">Todos los costos</option>
+        <option value="sin" {{ 'selected' if pedido == 'sin' }}>Solo operativos (sin pedido)</option>
+        <option value="con" {{ 'selected' if pedido == 'con' }}>Todos los de pedidos</option>
+        {% for o in orders %}
+          <option value="{{ o.id }}" {{ 'selected' if pedido == o.id|string }}>{{ o.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <details style="margin-top:10px" {{ 'open' if filters.q or filters.categoria or filters.estado }}>
+    <summary class="small" style="cursor:pointer">Más filtros (categoría, estado, fechas)</summary>
+    <div class="stack" style="margin-top:10px">
+      <input type="search" name="q" placeholder="Buscar por concepto" value="{{ filters.q }}">
+      <div class="grid-2">
+        <select name="categoria">
+          <option value="">Categoría: todas</option>
+          {% for c in categorias %}
+            <option value="{{ c.code }}" {{ 'selected' if filters.categoria == c.code }}>{{ c.label }}</option>
+          {% endfor %}
+        </select>
+        <select name="estado">
+          <option value="">Estado: todos</option>
+          {% for code, label in OPTIONS['payment_status'] %}
+            <option value="{{ code }}" {{ 'selected' if filters.estado == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grid-2">
+        <div><label>Desde</label><input type="date" name="desde" value="{{ filters.desde }}"></div>
+        <div><label>Hasta</label><input type="date" name="hasta" value="{{ filters.hasta }}"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sm btn-primary" type="submit">Aplicar</button>
+        <a class="btn btn-sm btn-ghost" href="/pagos">Limpiar todo</a>
+      </div>
+    </div>
+  </details>
+</form>
+
+{% if mes_label or pedido_label %}
+<p class="small muted">Mostrando:
+  {% if mes_label %}<strong>{{ mes_label }}</strong>{% endif %}
+  {% if mes_label and pedido_label %} · {% endif %}
+  {% if pedido_label %}<strong>{{ pedido_label }}</strong>{% endif %}
+</p>
+{% endif %}
+
+<div class="control {{ 'control-ok' if control_ok else 'control-bad' }}" style="margin-bottom:14px">
+  <div><div class="k">Total{{ ' (filtro)' if mes or pedido or filters.q or filters.categoria or filters.estado }}</div>
+    <div class="v">{{ total_ars | ars }}</div>
+    {% if total_usd %}<div class="k">{{ total_usd | usd }}</div>{% endif %}</div>
+  <div><div class="k">Suma aportes</div><div class="v">{{ total_aportes | ars }}</div></div>
+  <div class="control-status">
+    {% if control_ok %}✓ Coincide{% else %}⚠ Diferencia: {{ (total_ars - total_aportes) | ars }}{% endif %}
+  </div>
+</div>
+
+{% if payments %}
+<div class="list">
+  {% for p in payments %}
+    <a class="item" href="/pagos/{{ p.id }}">
+      <div class="item-top">
+        <span class="item-title">{{ p.concept }}</span>
+        <span class="item-amount">{{ p.amount_ars | ars }}</span>
+      </div>
+      <div class="item-sub">
+        <span class="item-flag {{ 'ok' if p.control_ok else 'bad' }}"></span>
+        {{ p.date | fecha }}
+        · {{ cat_label(p.category) }}
+        {% if p.order %}· <span class="badge badge-info">Pedido N°{{ p.order.number }}</span>{% endif %}
+        · <span class="badge">{{ label_for('payment_status', p.status) }}</span>
+        {% if p.currency_charged == 'USD' %}· {{ p.amount_usd | usd }}{% endif %}
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">🧾</div>
+    <p>No hay pagos con estos filtros.</p>
+    <a class="btn btn-primary" href="/pagos/nuevo">Cargar un pago</a>
+  </div>
+{% endif %}
+{% endblock %}

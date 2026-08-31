@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Socios{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Socios</h1>
+  <a class="btn btn-primary btn-sm" href="/socios/movimientos/nuevo">+ Movimiento</a>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Saldo entre socios</h2>
+    <a class="small" href="/socios/movimientos">Ver movimientos →</a></div>
+  {% include "settlements/_balance.html" %}
+</div>
+
+{% if recent_settlements %}
+<div class="card">
+  <div class="section-head"><h2>Últimos movimientos</h2>
+    <a class="small" href="/socios/movimientos">Todos</a></div>
+  <div class="list">
+    {% for s in recent_settlements %}
+      <a class="item" href="/socios/movimientos/{{ s.id }}">
+        <div class="item-top"><span class="item-title">{{ s.from_partner.name }} → {{ s.to_partner.name }}</span>
+          <span class="item-amount">{{ s.amount_ars | ars }}</span></div>
+        <div class="item-sub">{{ s.date | fecha }}{% if s.concept %} · {{ s.concept }}{% endif %}
+          {% if s.documents %}· 📎{% endif %}</div>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Porcentajes de reparto</h2>
+  <p class="hint">Se usan para el split automático de aportes y el reparto de ganancia.
+     Cambiarlos <strong>no</strong> modifica los pagos ya cargados.</p>
+  <form method="post" action="/socios/porcentajes" class="stack">
+    {% for p in partners if p.active %}
+    <div class="split-row">
+      <div><strong>{{ p.name }}</strong> <span class="muted small">· {{ p.username }}</span></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input name="pct_{{ p.id }}" inputmode="decimal" value="{{ '%.2f' % p.pct_share }}"
+               style="max-width:90px">
+        <span class="muted">%</span>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="row-between">
+      <span class="muted small">Deben sumar 100. Ahora: <strong>{{ '%.2f' % total_pct }}%</strong></span>
+      <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Configuración</h2>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/categorias">Categorías de pagos</a>
+    <a class="btn btn-ghost btn-sm" href="/datos">Ver base de datos</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Mi cuenta</h2>
+  <p class="small muted">Sesión iniciada como <strong>{{ partner.name }}</strong> ({{ partner.username }}).</p>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/cuenta/password">Cambiar mi contraseña</a>
+    <a class="btn btn-ghost btn-sm" href="/logout">Cerrar sesión</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Actividad reciente</h2>
+  {% if recent_audit %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th></tr></thead>
+      <tbody>
+        {% for a in recent_audit %}
+        <tr>
+          <td>{{ a.changed_at | fechahora }}</td>
+          <td>{{ a.changed_by or '—' }}</td>
+          <td style="white-space:normal">{{ a.summary or (a.action ~ ' ' ~ a.table_name) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted small">Sin movimientos todavía.</p>
+  {% endif %}
+</div>
+{% endblock %}

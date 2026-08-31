@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar compra' if purchase else 'Nueva compra' }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>{{ 'Editar compra' if purchase else 'Nueva compra' }}</h1>
+  <a class="btn btn-ghost btn-sm" href="{{ '/compras/' ~ purchase.id if purchase else '/compras' }}">Cancelar</a>
+</div>
+
+<form method="post" action="{{ '/compras/' ~ purchase.id if purchase else '/compras' }}"
+      enctype="multipart/form-data" class="stack">
+
+  <div class="card">
+    <div class="field">
+      <label for="supplier">Proveedor *</label>
+      <input id="supplier" name="supplier" value="{{ form.supplier or '' }}" required
+             placeholder="Ej: Yiwu Fishing Co.">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="date">Fecha *</label>
+        <input id="date" name="date" type="date" value="{{ form.date }}" required>
+      </div>
+      <div class="field">
+        <label for="invoice_number">N° de factura</label>
+        <input id="invoice_number" name="invoice_number" value="{{ form.invoice_number or '' }}">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="shipment_status">Estado del envío</label>
+        <select id="shipment_status" name="shipment_status">
+          {% for code, label in OPTIONS['shipment_status'] %}
+            <option value="{{ code }}" {{ 'selected' if form.shipment_status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="order_id">¿De qué pedido?</label>
+        <select id="order_id" name="order_id">
+          <option value="">— Compra suelta (sin pedido) —</option>
+          {% for o in orders %}
+            <option value="{{ o.id }}" {{ 'selected' if form.order_id == o.id|string }}>{{ o.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="payment_id">Pago que la cubre</label>
+      <select id="payment_id" name="payment_id">
+        <option value="">— sin vincular —</option>
+        {% for p in payments %}
+          <option value="{{ p.id }}" {{ 'selected' if form.payment_id == (p.id | string) }}>
+            #{{ p.id }} · {{ p.date | fecha }} · {{ p.concept[:40] }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><h2>Mercadería</h2>
+      <span class="muted small">Total: <strong id="items-total">US$ 0,00</strong></span></div>
+
+    <div id="items" data-currency="USD">
+      {% for it in items %}
+      <div class="item-row card card-tight">
+        <div class="row-between">
+          <strong class="item-row-n">#</strong>
+          <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
+        </div>
+        <div class="field">
+          <label>Producto / ítem</label>
+          <input data-name="item_name" value="{{ it.product_name }}">
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Cantidad</label>
+            <input data-name="item_qty" inputmode="decimal" value="{{ it.quantity }}"></div>
+          <div class="field"><label>Precio unit. USD</label>
+            <input data-name="item_price" inputmode="decimal" value="{{ it.unit_price_usd }}"></div>
+        </div>
+        <div class="small muted">Subtotal: <span class="item-line-total">US$ 0,00</span></div>
+      </div>
+      {% endfor %}
+
+      <template id="item-template">
+        <div class="item-row card card-tight">
+          <div class="row-between">
+            <strong class="item-row-n">#</strong>
+            <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
+          </div>
+          <div class="field">
+            <label>Producto / ítem</label>
+            <input data-name="item_name">
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Cantidad</label>
+              <input data-name="item_qty" inputmode="decimal"></div>
+            <div class="field"><label>Precio unit. USD</label>
+              <input data-name="item_price" inputmode="decimal"></div>
+          </div>
+          <div class="small muted">Subtotal: <span class="item-line-total">US$ 0,00</span></div>
+        </div>
+      </template>
+    </div>
+    <button type="button" id="add-item" class="btn btn-ghost btn-sm btn-block">+ Agregar ítem</button>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes">{{ form.notes or '' }}</textarea>
+    </div>
+    {% if not purchase %}
+    <div class="field">
+      <label for="comprobantes">Factura / comprobante (PDF o imagen)</label>
+      <input id="comprobantes" name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf">
+    </div>
+    {% endif %}
+  </div>
+
+  <button class="btn btn-primary btn-block" type="submit">
+    {{ 'Guardar cambios' if purchase else 'Cargar compra' }}
+  </button>
+  <div class="fab-space"></div>
+</form>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar venta' if sale else 'Nueva venta' }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>{{ 'Editar venta' if sale else 'Nueva venta' }}</h1>
+  <a class="btn btn-ghost btn-sm" href="{{ '/ventas/' ~ sale.id if sale else '/ventas' }}">Cancelar</a>
+</div>
+
+<form method="post" action="{{ '/ventas/' ~ sale.id if sale else '/ventas' }}"
+      enctype="multipart/form-data" class="stack">
+
+  <div class="card">
+    <div class="grid-2">
+      <div class="field">
+        <label for="date">Fecha *</label>
+        <input id="date" name="date" type="date" value="{{ form.date }}" required>
+      </div>
+      <div class="field">
+        <label for="customer">Cliente</label>
+        <input id="customer" name="customer" value="{{ form.customer or '' }}" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="channel">Canal</label>
+        <select id="channel" name="channel">
+          <option value="">—</option>
+          {% for code, label in OPTIONS['sale_channel'] %}
+            <option value="{{ code }}" {{ 'selected' if form.channel == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="payment_method">Medio de pago</label>
+        <select id="payment_method" name="payment_method">
+          {% for code, label in OPTIONS['payment_method'] %}
+            <option value="{{ code }}" {{ 'selected' if form.payment_method == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="status">Estado</label>
+      <select id="status" name="status">
+        {% for code, label in OPTIONS['sale_status'] %}
+          <option value="{{ code }}" {{ 'selected' if form.status == code }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><h2>Productos vendidos</h2>
+      <span class="muted small">Total: <strong id="items-total">$ 0,00</strong></span></div>
+
+    <div id="items" data-currency="ARS">
+      {% for it in items %}
+      <div class="item-row card card-tight">
+        <div class="row-between">
+          <strong class="item-row-n">#</strong>
+          <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
+        </div>
+        <div class="field"><label>Producto</label>
+          <input data-name="item_name" value="{{ it.product_name }}"></div>
+        <div class="grid-2">
+          <div class="field"><label>Cantidad</label>
+            <input data-name="item_qty" inputmode="decimal" value="{{ it.quantity }}"></div>
+          <div class="field"><label>Precio unit. ARS</label>
+            <input data-name="item_price" inputmode="decimal" value="{{ it.unit_price_ars }}"></div>
+        </div>
+        <div class="small muted">Subtotal: <span class="item-line-total">$ 0,00</span></div>
+      </div>
+      {% endfor %}
+
+      <template id="item-template">
+        <div class="item-row card card-tight">
+          <div class="row-between">
+            <strong class="item-row-n">#</strong>
+            <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
+          </div>
+          <div class="field"><label>Producto</label><input data-name="item_name"></div>
+          <div class="grid-2">
+            <div class="field"><label>Cantidad</label>
+              <input data-name="item_qty" inputmode="decimal"></div>
+            <div class="field"><label>Precio unit. ARS</label>
+              <input data-name="item_price" inputmode="decimal"></div>
+          </div>
+          <div class="small muted">Subtotal: <span class="item-line-total">$ 0,00</span></div>
+        </div>
+      </template>
+    </div>
+    <button type="button" id="add-item" class="btn btn-ghost btn-sm btn-block">+ Agregar producto</button>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes">{{ form.notes or '' }}</textarea>
+    </div>
+    {% if not sale %}
+    <div class="field">
+      <label for="comprobantes">Comprobante (PDF o imagen)</label>
+      <input id="comprobantes" name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf">
+    </div>
+    {% endif %}
+  </div>
+
+  <button class="btn btn-primary btn-block" type="submit">
+    {{ 'Guardar cambios' if sale else 'Cargar venta' }}
+  </button>
+  <div class="fab-space"></div>
+</form>
+{% endblock %}

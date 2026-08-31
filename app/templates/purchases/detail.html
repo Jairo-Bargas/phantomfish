@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ purchase.supplier }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/compras">← Compras</a>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/compras/{{ purchase.id }}/editar">Editar</a>
+    <form method="post" action="/compras/{{ purchase.id }}/eliminar"
+          data-confirm="¿Eliminar esta compra? No se puede deshacer.">
+      <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h1>{{ purchase.supplier }}</h1>
+  <div class="item-sub" style="margin-bottom:12px">
+    {{ purchase.date | fecha }}
+    {% if purchase.invoice_number %}· Factura {{ purchase.invoice_number }}{% endif %}
+    · <span class="badge badge-info">{{ label_for('shipment_status', purchase.shipment_status) }}</span>
+    {% if purchase.order %}· <a href="/pedidos/{{ purchase.order.id }}">{{ purchase.order.display_name }}</a>{% endif %}
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="k">Total USD</div><div class="v">{{ purchase.total_usd | usd }}</div></div>
+    <div class="tile"><div class="k">Ítems</div><div class="v">{{ purchase.items | length }}</div></div>
+    {% if purchase.payment %}
+    <div class="tile"><div class="k">Pago vinculado</div>
+      <div class="v"><a href="/pagos/{{ purchase.payment.id }}">#{{ purchase.payment.id }}</a></div></div>
+    {% endif %}
+  </div>
+  {% if purchase.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ purchase.notes }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Mercadería</h2>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Unit. USD</th><th class="num">Total USD</th></tr></thead>
+      <tbody>
+        {% for it in purchase.items %}
+        <tr>
+          <td>{{ it.product_name }}</td>
+          <td class="num">{{ it.quantity | qty }}</td>
+          <td class="num">{{ it.unit_price_usd | usd }}</td>
+          <td class="num">{{ it.total_usd | usd }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="muted">Sin detalle de ítems.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if purchase.items %}
+      <tfoot><tr><th colspan="3" class="num">Total</th><th class="num">{{ purchase.total_usd | usd }}</th></tr></tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% set doc_entity = 'purchase' %}
+{% set doc_owner_id = purchase.id %}
+{% include "partials/documents.html" with context %}
+{% endblock %}

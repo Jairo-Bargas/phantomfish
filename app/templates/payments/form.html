@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar pago' if payment else 'Nuevo pago' }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>{{ 'Editar pago' if payment else 'Nuevo pago' }}</h1>
+  <a class="btn btn-ghost btn-sm" href="{{ '/pagos/' ~ payment.id if payment else '/pagos' }}">Cancelar</a>
+</div>
+
+<form id="payment-form"
+      method="post"
+      action="{{ '/pagos/' ~ payment.id if payment else '/pagos' }}"
+      enctype="multipart/form-data"
+      data-pcts='{{ pct_by_partner | tojson }}'
+      class="stack">
+
+  <div class="card">
+    <div class="field">
+      <label for="concept">Concepto *</label>
+      <input id="concept" name="concept" value="{{ form.concept or '' }}" required
+             placeholder="Ej: Pago factura proveedor China #45">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="date">Fecha *</label>
+        <input id="date" name="date" type="date" value="{{ form.date }}" required>
+      </div>
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" name="category">
+          {% set cat_codes = categorias | map(attribute='code') | list %}
+          {% for c in categorias %}
+            <option value="{{ c.code }}" {{ 'selected' if form.category == c.code }}>{{ c.label }}</option>
+          {% endfor %}
+          {% if form.category and form.category not in cat_codes %}
+            <option value="{{ form.category }}" selected>{{ cat_label(form.category) }} (oculta)</option>
+          {% endif %}
+        </select>
+        <div class="hint"><a href="/categorias">Administrar categorías</a></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="status">Estado</label>
+        <select id="status" name="status">
+          {% for code, label in OPTIONS['payment_status'] %}
+            <option value="{{ code }}" {{ 'selected' if form.status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="order_id">¿De qué pedido?</label>
+        <select id="order_id" name="order_id">
+          <option value="">— Ninguno (costo operativo)</option>
+          {% for o in orders %}
+            <option value="{{ o.id }}" {{ 'selected' if form.order_id == o.id|string }}>{{ o.display_name }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">Solo los costos de importación van a un pedido (proveedor, flete, aduana). Contadora, alquiler, etc. → dejá "Ninguno".</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Monto y cotización</h2>
+    <div class="field">
+      <label>¿En qué moneda se pagó?</label>
+      <div class="pill-toggle">
+        <label><input type="radio" name="currency_charged" value="ARS"
+               {{ 'checked' if form.currency_charged == 'ARS' }}><span>Pesos (ARS)</span></label>
+        <label><input type="radio" name="currency_charged" value="USD"
+               {{ 'checked' if form.currency_charged != 'ARS' }}><span>Dólares (USD)</span></label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="amount_original">Monto en esa moneda *</label>
+        <input id="amount_original" name="amount_original" inputmode="decimal"
+               value="{{ form.amount_original or '' }}" required placeholder="1000.00">
+      </div>
+      <div class="field">
+        <label for="exchange_rate_type">Tipo de dólar</label>
+        <select id="exchange_rate_type" name="exchange_rate_type">
+          {% for code, label in OPTIONS['rate_type'] %}
+            <option value="{{ code }}" {{ 'selected' if form.exchange_rate_type == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="exchange_rate">Cotización (ARS por USD) *</label>
+      <div class="field-inline">
+        <div class="field">
+          <input id="exchange_rate" name="exchange_rate" inputmode="decimal"
+                 value="{{ form.exchange_rate or (suggested_rate or '') }}" required placeholder="1300.00">
+        </div>
+        <button type="button" id="fetch-rate" class="btn btn-ghost btn-sm">Traer de dolarapi</button>
+      </div>
+      <div class="hint" id="rate-note">
+        {% if suggested_rate %}Sugerido {{ suggested_rate | rate }} ({{ rate_source or 'dolarapi.com' }}). Confirmá antes de guardar.
+        {% else %}El valor se registra tal como lo confirmás vos. No se recalcula después.{% endif %}
+      </div>
+    </div>
+    <div class="control control-ok" style="margin-top:6px">
+      <div><div class="k">Total en ARS</div><div class="v" id="calc-ars">—</div></div>
+      <div><div class="k">Total en USD</div><div class="v" id="calc-usd">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Aportes de los socios</h2>
+    <div class="field">
+      <div class="pill-toggle">
+        <label><input type="radio" name="split_mode" value="auto" checked><span>Automático (35/65)</span></label>
+        <label><input type="radio" name="split_mode" value="custom"><span>Editar montos</span></label>
+      </div>
+      <div class="hint">Automático reparte según el % de cada socio. Elegí "Editar" para una excepción.</div>
+    </div>
+    <div class="stack">
+      {% for p in partners %}
+      <div class="split-row">
+        <div><strong>{{ p.name }}</strong> <span class="muted small">({{ p.pct_share }}%)</span></div>
+        <input data-contrib="{{ p.id }}" name="contribution_{{ p.id }}" inputmode="decimal"
+               value="{{ contributions[p.id] if contributions[p.id] not in (none, '') else '' }}">
+      </div>
+      {% endfor %}
+    </div>
+    <div id="control-box" class="control control-ok" style="margin-top:12px">
+      <div><div class="k">Total del pago</div><div class="v" id="contrib-total">—</div></div>
+      <div><div class="k">Suma de aportes</div><div class="v" id="contrib-sum">—</div></div>
+      <div class="control-status" id="contrib-status">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes" placeholder="Opcional">{{ form.notes or '' }}</textarea>
+    </div>
+    {% if not payment %}
+    <div class="field">
+      <label for="comprobantes">Comprobantes (PDF o imagen)</label>
+      <input id="comprobantes" name="comprobantes" type="file" multiple
+             accept=".pdf,image/*,application/pdf">
+      <div class="hint">Podés subir varios: transferencia, factura, etc. También se pueden agregar después.</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <button class="btn btn-primary btn-block" type="submit">
+    {{ 'Guardar cambios' if payment else 'Cargar pago' }}
+  </button>
+  <div class="fab-space"></div>
+</form>
+{% endblock %}

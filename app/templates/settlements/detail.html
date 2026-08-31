@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Movimiento entre socios{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios/movimientos">← Movimientos</a>
+  <form method="post" action="/socios/movimientos/{{ settlement.id }}/eliminar"
+        data-confirm="¿Eliminar este movimiento y su comprobante? No se puede deshacer.">
+    <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+  </form>
+</div>
+
+<div class="card">
+  <h1>{{ settlement.from_partner.name }} → {{ settlement.to_partner.name }}</h1>
+  <div class="item-sub" style="margin-bottom:12px">
+    {{ settlement.date | fecha }} · {{ label_for('settlement_method', settlement.method) }}
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="k">Monto</div><div class="v">{{ settlement.amount_ars | ars }}</div></div>
+    <div class="tile"><div class="k">Pagó</div><div class="v">{{ settlement.from_partner.name }}</div></div>
+    <div class="tile"><div class="k">Recibió</div><div class="v">{{ settlement.to_partner.name }}</div></div>
+  </div>
+  {% if settlement.concept %}<p class="small" style="margin-top:10px"><strong>Concepto:</strong> {{ settlement.concept }}</p>{% endif %}
+  {% if settlement.notes %}<p class="small"><strong>Notas:</strong> {{ settlement.notes }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Comprobantes</h2></div>
+  {% if documents %}
+  <div class="stack">
+    {% for d in documents %}
+    <div class="doc">
+      <span>{{ '📄' if d.content_type == 'application/pdf' else '🖼️' }}</span>
+      <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">{{ d.original_filename }}</a>
+      <form method="post" action="/comprobantes/{{ d.id }}/eliminar" data-confirm="¿Eliminar este comprobante?">
+        <button class="btn btn-danger btn-sm" type="submit">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Sin comprobantes todavía.</p>
+  {% endif %}
+  <form method="post" action="/comprobantes/settlement/{{ settlement.id }}" enctype="multipart/form-data"
+        class="stack" style="margin-top:12px">
+    <input name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf" required>
+    <button class="btn btn-ghost btn-sm btn-block" type="submit">Subir comprobante</button>
+  </form>
+</div>
+{% endblock %}

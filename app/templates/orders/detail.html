@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{{ order.display_name }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/pedidos">← Pedidos</a>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/pedidos/{{ order.id }}/editar">Editar</a>
+    <form method="post" action="/pedidos/{{ order.id }}/eliminar"
+          data-confirm="¿Eliminar el pedido? Los pagos y compras NO se borran, quedan sin asignar.">
+      <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h1>{{ order.display_name }}</h1>
+  <div class="item-sub" style="margin-bottom:10px">
+    {{ order.date | fecha }} · <span class="badge">{{ label_for('order_status', order.status) }}</span>
+    · margen {{ order.markup_pct | pct }}%
+  </div>
+  {% if order.notes %}<p class="small"><strong>Notas:</strong> {{ order.notes }}</p>{% endif %}
+</div>
+
+{% if costing.incomplete %}
+<div class="flash flash-warning">{{ costing.note }}</div>
+{% endif %}
+
+<div class="card">
+  <h2>Costo del pedido</h2>
+  <div class="tiles">
+    <div class="tile"><div class="k">Señuelos</div><div class="v">{{ costing.units | qty }}</div></div>
+    <div class="tile"><div class="k">Mercadería (proveedor)</div><div class="v">{{ costing.merch_usd | usd }}</div></div>
+    <div class="tile"><div class="k">Flete + aduana + comis.</div><div class="v">{{ costing.extra_usd | usd }}</div></div>
+    <div class="tile"><div class="k">Total pagado</div><div class="v">{{ costing.payments_ars | ars }}</div>
+      <div class="k">{{ costing.payments_usd | usd }}</div></div>
+  </div>
+  {% if costing.units > 0 %}
+  <div class="control control-ok" style="margin-top:12px">
+    <div><div class="k">Costo promedio por señuelo</div><div class="v">{{ costing.avg_landed_ars | ars }}</div></div>
+    <div><div class="k">En dólares</div><div class="v">{{ costing.avg_landed_usd | usd }}</div></div>
+  </div>
+  {% endif %}
+  <p class="hint">El flete, la aduana y las comisiones se reparten entre las {{ costing.units | qty }} unidades
+    (partes iguales). Costos operativos (contadora, alquiler) <strong>no</strong> van acá — se cubren con el margen.</p>
+</div>
+
+{% if costing.models %}
+<div class="card">
+  <h2>Costo y precio por modelo</h2>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Modelo</th><th class="num">Cant.</th>
+        <th class="num">Costo/u (ARS)</th>
+        <th class="num">Precio sugerido</th>
+        <th class="num">Proveedor US$</th><th class="num">+ reparto US$</th>
+        <th class="num">Costo/u US$</th>
+      </tr></thead>
+      <tbody>
+        {% for m in costing.models %}
+        {% set pr = price_by_model[m.name] %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td class="num">{{ m.qty | qty }}</td>
+          <td class="num" style="font-weight:700">{{ m.landed_unit_ars | ars }}</td>
+          <td class="num" style="font-weight:700;color:var(--primary)">{{ pr.ars | ars }}</td>
+          <td class="num">{{ m.supplier_unit_usd | usd }}</td>
+          <td class="num">{{ costing.extra_per_unit_usd | usd }}</td>
+          <td class="num">{{ m.landed_unit_usd | usd }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">Precio sugerido = costo (ARS) + {{ order.markup_pct | pct }}% de margen.
+    <a href="/pedidos/{{ order.id }}/editar">Cambiar margen</a></p>
+
+  <h3 style="margin-top:14px">Escenarios de precio (ARS)</h3>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Modelo</th><th class="num">Costo</th>
+        <th class="num">×2</th><th class="num">×2,5</th><th class="num">×3</th></tr></thead>
+      <tbody>
+        {% for m in costing.models %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td class="num">{{ m.landed_unit_ars | ars }}</td>
+          {% for s in price_by_model[m.name].scen_ars %}
+            <td class="num">{{ s.price | ars }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="section-head"><h2>Compras del pedido</h2>
+    <a class="btn btn-ghost btn-sm" href="/compras/nueva?pedido={{ order.id }}">+ Compra</a></div>
+  {% if order.purchases %}
+  <div class="list">
+    {% for pur in order.purchases %}
+      <a class="item" href="/compras/{{ pur.id }}">
+        <div class="item-top"><span class="item-title">{{ pur.supplier }}</span>
+          <span class="item-amount">{{ pur.total_usd | usd }}</span></div>
+        <div class="item-sub">{{ pur.date | fecha }} · {{ label_for('shipment_status', pur.shipment_status) }}
+          · {{ pur.items | length }} modelo(s)</div>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Sin compras. Agregá una con el detalle de modelos y cantidades para calcular el costo.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Pagos del pedido</h2>
+    <a class="btn btn-ghost btn-sm" href="/pagos/nuevo?pedido={{ order.id }}">+ Pago</a></div>
+  {% if order.payments %}
+  <div class="list">
+    {% for pay in order.payments %}
+      <a class="item" href="/pagos/{{ pay.id }}">
+        <div class="item-top"><span class="item-title">{{ pay.concept }}</span>
+          <span class="item-amount">{{ pay.amount_ars | ars }}</span></div>
+        <div class="item-sub">{{ pay.date | fecha }} · {{ cat_label(pay.category) }} · {{ pay.amount_usd | usd }}</div>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Sin pagos vinculados. Cargá el pago al proveedor, el flete, la aduana, etc.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Comprobantes del pedido</h2>
+  {% if documents %}
+  <div class="stack">
+    {% for kind, ent, d in documents %}
+    <div class="doc">
+      <span>{{ '📄' if d.content_type == 'application/pdf' else '🖼️' }}</span>
+      <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">{{ d.original_filename }}</a>
+      <span class="badge">{{ kind }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Los comprobantes se suben en cada pago o compra del pedido y aparecen todos acá.</p>
+  {% endif %}
+</div>
+{% endblock %}

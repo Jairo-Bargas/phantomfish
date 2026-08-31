@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Movimientos entre socios{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <a class="btn btn-primary btn-sm" href="/socios/movimientos/nuevo">+ Registrar</a>
+</div>
+<h1>Movimientos entre socios</h1>
+
+<div class="card">
+  <h2>Saldo neto entre socios</h2>
+  {% include "settlements/_balance.html" %}
+</div>
+
+{% if settlements %}
+<div class="list">
+  {% for s in settlements %}
+    <a class="item" href="/socios/movimientos/{{ s.id }}">
+      <div class="item-top">
+        <span class="item-title">{{ s.from_partner.name }} → {{ s.to_partner.name }}</span>
+        <span class="item-amount">{{ s.amount_ars | ars }}</span>
+      </div>
+      <div class="item-sub">
+        {{ s.date | fecha }}
+        · {{ label_for('settlement_method', s.method) }}
+        {% if s.concept %}· {{ s.concept }}{% endif %}
+        {% if s.documents %}· 📎 {{ s.documents | length }}{% endif %}
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">⇄</div>
+    <p>Todavía no registraste ningún movimiento entre socios.</p>
+    <a class="btn btn-primary" href="/socios/movimientos/nuevo">Registrar el primero</a>
+  </div>
+{% endif %}
+{% endblock %}

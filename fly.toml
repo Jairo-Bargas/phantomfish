@@ -1,0 +1,42 @@
+# Configuración de despliegue en Fly.io
+# El nombre 'app' tiene que ser único en todo Fly. Si está tomado, cambialo
+# (por ej. phantomfish-jairo) acá y en los comandos de DEPLOY.md.
+
+app = "phantomfish-gestion"
+primary_region = "eze"        # Buenos Aires. Alternativas: "gru" (San Pablo), "scl" (Santiago)
+
+[build]
+
+[env]
+  DATABASE_URL = "sqlite:////data/phantomfish.db"
+  STORAGE_DIR = "/data/uploads"
+  DEFAULT_RATE_TYPE = "blue"
+  COOKIE_SECURE = "true"
+
+# Disco persistente: acá viven la base de datos y los comprobantes subidos.
+[[mounts]]
+  source = "phantomfish_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 40
+
+[[http_service.checks]]
+  interval = "20s"
+  timeout = "4s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

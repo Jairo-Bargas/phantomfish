@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Ventas</h1>
+  <a class="btn btn-primary btn-sm" href="/ventas/nueva">+ Nueva</a>
+</div>
+
+<div class="tile" style="margin-bottom:14px">
+  <div class="k">Total vendido (ARS)</div><div class="v">{{ total_ars | ars }}</div>
+</div>
+
+{% if sales %}
+<div class="list">
+  {% for s in sales %}
+    <a class="item" href="/ventas/{{ s.id }}">
+      <div class="item-top">
+        <span class="item-title">{{ s.customer or 'Sin cliente' }}</span>
+        <span class="item-amount">{{ s.total_ars | ars }}</span>
+      </div>
+      <div class="item-sub">
+        {{ s.date | fecha }}
+        {% if s.channel %}· {{ label_for('sale_channel', s.channel) }}{% endif %}
+        · <span class="badge">{{ label_for('sale_status', s.status) }}</span>
+        · {{ s.items | length }} ítem(s)
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">🛒</div>
+    <p>No hay ventas cargadas.</p>
+    <a class="btn btn-primary" href="/ventas/nueva">Cargar una venta</a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Datos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Datos</h1>
+  <a class="btn btn-primary btn-sm" href="/export/excel">⬇ Excel</a>
+</div>
+<p class="hint">
+  Vista directa de las tablas (solo lectura). El archivo <code>phantomfish.db</code> también se
+  puede abrir con <a href="https://sqlitebrowser.org" target="_blank" rel="noopener">DB Browser for SQLite</a>.
+</p>
+
+<form method="get" action="/datos" class="card card-tight">
+  <label for="tabla">Tabla</label>
+  <select id="tabla" name="tabla" onchange="this.form.submit()">
+    {% for t in tables %}
+      <option value="{{ t }}" {{ 'selected' if t == selected }}>{{ t }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if selected %}
+<p class="small muted">{{ total }} fila(s){% if total > page_size %} · página {{ pagina }}{% endif %}</p>
+<div class="table-wrap">
+  <table class="data">
+    <thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>{% for c in columns %}<td>{{ row[c] if row[c] is not none else '' }}</td>{% endfor %}</tr>
+      {% else %}
+      <tr><td colspan="{{ columns | length }}" class="muted">Tabla vacía.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="btn-row" style="margin-top:10px">
+  {% if pagina > 1 %}
+    <a class="btn btn-sm btn-ghost" href="/datos?tabla={{ selected }}&pagina={{ pagina - 1 }}">← Anterior</a>
+  {% endif %}
+  {% if has_next %}
+    <a class="btn btn-sm btn-ghost" href="/datos?tabla={{ selected }}&pagina={{ pagina + 1 }}">Siguiente →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

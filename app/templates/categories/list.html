@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Categorías{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <h1>Categorías de pagos</h1>
+</div>
+
+<div class="card">
+  <form method="post" action="/categorias" class="field-inline">
+    <div class="field" style="margin-bottom:0">
+      <label for="label">Nueva categoría</label>
+      <input id="label" name="label" required placeholder="Ej: Costos administrativos" maxlength="80">
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Agregar</button>
+  </form>
+  <div class="hint">Se usan en el formulario de pagos. Podés renombrarlas u ocultarlas cuando quieras.</div>
+</div>
+
+<div class="card">
+  <div class="list">
+    {% for c in categorias_all %}
+    <div class="item">
+      <div class="item-top">
+        <form method="post" action="/categorias/{{ c.id }}" class="field-inline" style="flex:1">
+          <input name="label" value="{{ c.label }}" maxlength="80"
+                 style="{{ 'opacity:.5' if not c.active }}">
+          <button class="btn btn-ghost btn-sm" type="submit" title="Guardar nombre">✓</button>
+        </form>
+      </div>
+      <div class="item-sub">
+        {% if c.active %}<span class="badge badge-ok">Activa</span>
+        {% else %}<span class="badge">Oculta</span>{% endif %}
+        <span>{{ usage.get(c.code, 0) }} pago(s)</span>
+        <form method="post" action="/categorias/{{ c.id }}" style="display:inline">
+          <input type="hidden" name="accion" value="toggle">
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {{ 'Ocultar' if c.active else 'Activar' }}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="hint">Ocultar una categoría no borra los pagos que ya la usan: siguen mostrándose con ese nombre.</p>
+</div>
+{% endblock %}

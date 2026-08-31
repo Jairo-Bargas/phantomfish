@@ -1,0 +1,10 @@
+# Caddy hace de "portero": recibe el tráfico de internet en https y se lo pasa
+# a la app. El certificado https lo saca y renueva solo (Let's Encrypt).
+{$SITE_ADDRESS} {
+	reverse_proxy app:8080
+	encode zstd gzip
+
+	request_body {
+		max_size 25MB
+	}
+}

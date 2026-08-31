@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Registrar movimiento{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Registrar movimiento entre socios</h1>
+  <a class="btn btn-ghost btn-sm" href="/socios/movimientos">Cancelar</a>
+</div>
+
+<form method="post" action="/socios/movimientos" enctype="multipart/form-data" class="stack">
+  <div class="card">
+    <p class="hint">Registrá cuando un socio le paga o le devuelve plata al otro (su parte de un
+      gasto que pagó el otro, un préstamo, etc.). Esto <strong>no</strong> es un costo de la empresa.</p>
+    <div class="grid-2">
+      <div class="field">
+        <label for="from_partner_id">Pagó / transfirió *</label>
+        <select id="from_partner_id" name="from_partner_id" required>
+          {% for p in partners %}
+          <option value="{{ p.id }}" {{ 'selected' if form.from_partner_id == p.id|string }}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="to_partner_id">Recibió *</label>
+        <select id="to_partner_id" name="to_partner_id" required>
+          {% for p in partners %}
+          <option value="{{ p.id }}" {{ 'selected' if form.to_partner_id == p.id|string }}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="date">Fecha *</label>
+        <input id="date" name="date" type="date" value="{{ form.date }}" required>
+      </div>
+      <div class="field">
+        <label for="amount_ars">Monto (ARS) *</label>
+        <input id="amount_ars" name="amount_ars" inputmode="decimal"
+               value="{{ form.amount_ars or '' }}" required placeholder="30000.00">
+      </div>
+    </div>
+    <div class="field">
+      <label for="method">Medio</label>
+      <select id="method" name="method">
+        {% for code, label in OPTIONS['settlement_method'] %}
+          <option value="{{ code }}" {{ 'selected' if form.method == code }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="concept">Concepto</label>
+      <input id="concept" name="concept" value="{{ form.concept or '' }}"
+             placeholder="Ej: su parte del pago al proveedor #45" maxlength="255">
+    </div>
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes" placeholder="Opcional">{{ form.notes or '' }}</textarea>
+    </div>
+    <div class="field">
+      <label for="comprobantes">Comprobante (transferencia, recibo)</label>
+      <input id="comprobantes" name="comprobantes" type="file" multiple
+             accept=".pdf,image/*,application/pdf">
+      <div class="hint">PDF o foto. También se puede agregar después.</div>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-block" type="submit">Registrar</button>
+  <div class="fab-space"></div>
+</form>
+{% endblock %}

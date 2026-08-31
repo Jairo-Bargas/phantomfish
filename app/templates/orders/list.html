@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Pedidos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Pedidos</h1>
+  <a class="btn btn-primary btn-sm" href="/pedidos/nuevo">+ Nuevo pedido</a>
+</div>
+
+{% if orders %}
+<div class="list">
+  {% for o in orders %}
+    {% set c = costing[o.id] %}
+    <a class="item" href="/pedidos/{{ o.id }}">
+      <div class="item-top">
+        <span class="item-title">{{ o.display_name }}</span>
+        <span class="badge {{ 'badge-ok' if o.status == 'cerrado' else 'badge-info' if o.status == 'recibido' else '' }}">
+          {{ label_for('order_status', o.status) }}</span>
+      </div>
+      <div class="item-sub">
+        {{ o.date | fecha }}
+        {% if c.units > 0 %}· {{ c.units | qty }} señuelos{% endif %}
+        {% if c.avg_landed_usd > 0 %}· ≈ {{ c.avg_landed_usd | usd }}/u{% endif %}
+        {% if c.incomplete %}· <span class="badge badge-warn">faltan datos</span>{% endif %}
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">📦</div>
+    <p>Todavía no cargaste ningún pedido.</p>
+    <a class="btn btn-primary" href="/pedidos/nuevo">Crear el primero</a>
+  </div>
+{% endif %}
+
+<div class="card" style="margin-top:16px">
+  <div class="section-head">
+    <h2>Compras sueltas</h2>
+    <a class="btn btn-ghost btn-sm" href="/compras/nueva">+ Compra</a>
+  </div>
+  <p class="hint">Compras que no van a un pedido (repuestos, insumos, muestras...).</p>
+  {% if sueltas %}
+  <div class="list">
+    {% for p in sueltas %}
+      <a class="item" href="/compras/{{ p.id }}">
+        <div class="item-top"><span class="item-title">{{ p.supplier }}</span>
+          <span class="item-amount">{{ p.total_usd | usd }}</span></div>
+        <div class="item-sub">{{ p.date | fecha }} · {{ label_for('shipment_status', p.shipment_status) }}</div>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">No hay compras sueltas. <a href="/compras">Ver todas las compras</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

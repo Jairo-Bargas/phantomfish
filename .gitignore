@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+deploy/.env
+pf.tgz
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+storage/uploads/
+exports/
+.pytest_cache/
+.DS_Store

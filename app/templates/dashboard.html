@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Tablero{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Tablero</h1>
+  <a class="btn btn-primary btn-sm" href="/export/excel{% if mes %}?mes={{ mes }}{% elif desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">⬇ Excel</a>
+</div>
+
+<div class="card card-tight">
+  <div class="btn-row">
+    <a class="btn btn-sm {{ 'btn-primary' if not (mes or desde or hasta) else 'btn-ghost' }}" href="/">Todo</a>
+    <a class="btn btn-sm {{ 'btn-primary' if mes == mes_actual else 'btn-ghost' }}" href="/?mes={{ mes_actual }}">Este mes</a>
+    <a class="btn btn-sm {{ 'btn-primary' if mes == mes_pasado else 'btn-ghost' }}" href="/?mes={{ mes_pasado }}">Mes pasado</a>
+    <a class="btn btn-sm btn-ghost" href="/reporte">Reporte detallado →</a>
+  </div>
+  {% if periodo_label %}<p class="small muted" style="margin:8px 0 0">Período: <strong>{{ periodo_label }}</strong></p>{% endif %}
+  <details style="margin-top:8px">
+    <summary class="small" style="cursor:pointer">Rango de fechas</summary>
+    <form method="get" action="/" class="grid-2" style="margin-top:8px">
+      <div><label>Desde</label><input type="date" name="desde" value="{{ desde }}"></div>
+      <div><label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}"></div>
+      <button class="btn btn-sm btn-primary" type="submit" style="grid-column:1/-1">Aplicar</button>
+    </form>
+  </details>
+</div>
+
+<div class="tiles" style="margin-bottom:14px">
+  <div class="tile"><div class="k">Pagos / costos</div><div class="v">{{ summary.total_payments_ars | ars }}</div></div>
+  <div class="tile"><div class="k">Ventas</div><div class="v">{{ summary.total_sales_ars | ars }}</div></div>
+  <div class="tile">
+    <div class="k">Resultado neto</div>
+    <div class="v {{ 'neg' if summary.net_result_ars < 0 else 'pos' }}">{{ summary.net_result_ars | ars }}</div>
+  </div>
+  <div class="tile"><div class="k">Pagos cargados</div><div class="v">{{ summary.payments_count }}</div></div>
+</div>
+
+<div class="card">
+  <h2>Control global de aportes</h2>
+  <div class="control {{ 'control-ok' if summary.control_ok else 'control-bad' }}">
+    <div><div class="k">Total pagos</div><div class="v">{{ summary.total_payments_ars | ars }}</div></div>
+    <div><div class="k">Suma aportes socios</div><div class="v">{{ summary.total_contributions_ars | ars }}</div></div>
+    <div class="control-status">
+      {% if summary.control_ok %}✓ Todo cuadra{% else %}⚠ Diferencia: {{ summary.control_difference | ars }}{% endif %}
+    </div>
+  </div>
+  {% if summary.mismatched_payments %}
+    <p class="small" style="margin-top:10px">Pagos a revisar:</p>
+    <div class="list">
+      {% for p in summary.mismatched_payments %}
+        <a class="item" href="/pagos/{{ p.id }}">
+          <div class="item-top"><span class="item-title">{{ p.concept }}</span>
+            <span class="item-amount badge-bad badge">{{ p.control_difference | ars }}</span></div>
+          <div class="item-sub">{{ p.date | fecha }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Socios</h2><a class="small" href="/socios">Ver / saldar →</a></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Socio</th><th class="num">%</th><th class="num">Le correspondía</th>
+        <th class="num">Aportó</th><th class="num">Saldo neto</th><th class="num">Gcia. según %</th></tr></thead>
+      <tbody>
+        {% for ps in summary.partners %}
+        <tr>
+          <td>{{ ps.name }}</td>
+          <td class="num">{{ ps.pct_share }}%</td>
+          <td class="num">{{ ps.should_contribute | ars }}</td>
+          <td class="num">{{ ps.did_contribute | ars }}</td>
+          <td class="num" style="font-weight:700;color:{{ 'var(--ok)' if ps.net_balance >= 0 else 'var(--danger)' }}">
+            {{ ps.net_balance | ars }}</td>
+          <td class="num">{{ ps.profit_share | ars }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">Saldo neto = lo de los aportes menos las devoluciones ya hechas entre ustedes.
+    Positivo = todavía le deben; negativo = todavía debe.</p>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Últimos pagos</h2><a class="small" href="/pagos">Ver todos</a></div>
+  {% if recent_payments %}
+  <div class="list">
+    {% for p in recent_payments %}
+      <a class="item" href="/pagos/{{ p.id }}">
+        <div class="item-top">
+          <span class="item-title">{{ p.concept }}</span>
+          <span class="item-amount">{{ p.amount_ars | ars }}</span>
+        </div>
+        <div class="item-sub">
+          <span class="item-flag {{ 'ok' if p.control_ok else 'bad' }}"></span>
+          {{ p.date | fecha }} · {{ cat_label(p.category) }}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Todavía no cargaste pagos. <a href="/pagos/nuevo">Cargar el primero</a>.</p>
+  {% endif %}
+</div>
+
+{% if pending_shipments %}
+<div class="card">
+  <div class="section-head"><h2>Envíos en curso</h2><a class="small" href="/compras">Compras</a></div>
+  <div class="list">
+    {% for c in pending_shipments %}
+      <a class="item" href="/compras/{{ c.id }}">
+        <div class="item-top"><span class="item-title">{{ c.supplier }}</span>
+          <span class="badge badge-info">{{ label_for('shipment_status', c.shipment_status) }}</span></div>
+        <div class="item-sub">{{ c.date | fecha }} · {{ c.total_usd | usd }}</div>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

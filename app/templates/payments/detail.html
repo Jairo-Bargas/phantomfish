@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ payment.concept }}{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/pagos">← Pagos</a>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/pagos/{{ payment.id }}/editar">Editar</a>
+    <form method="post" action="/pagos/{{ payment.id }}/eliminar"
+          data-confirm="¿Eliminar este pago y sus comprobantes? No se puede deshacer.">
+      <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h1>{{ payment.concept }}</h1>
+  <div class="item-sub" style="margin-bottom:12px">
+    {{ payment.date | fecha }}
+    · {{ cat_label(payment.category) }}
+    · <span class="badge">{{ label_for('payment_status', payment.status) }}</span>
+    {% if payment.order %}· <a href="/pedidos/{{ payment.order.id }}">{{ payment.order.display_name }}</a>{% endif %}
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="k">Total ARS</div><div class="v">{{ payment.amount_ars | ars }}</div></div>
+    <div class="tile"><div class="k">Total USD</div><div class="v">{{ payment.amount_usd | usd }}</div></div>
+    <div class="tile"><div class="k">Cargado en</div><div class="v">{{ payment.currency_charged }} {{ payment.amount_original | ars if payment.currency_charged=='ARS' else payment.amount_original | usd }}</div></div>
+    <div class="tile"><div class="k">Cotización</div><div class="v">{{ payment.exchange_rate | rate }}</div>
+      <div class="k">{{ label_for('rate_type', payment.exchange_rate_type) }}</div></div>
+  </div>
+  {% if payment.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ payment.notes }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Control</h2>
+  <div class="control {{ 'control-ok' if payment.control_ok else 'control-bad' }}">
+    <div><div class="k">Total del pago</div><div class="v">{{ payment.amount_ars | ars }}</div></div>
+    <div><div class="k">Suma de aportes</div><div class="v">{{ payment.contributed_total | ars }}</div></div>
+    <div class="control-status">
+      {% if payment.control_ok %}✓ Los aportes coinciden con el total
+      {% else %}⚠ Diferencia: {{ payment.control_difference | ars }}{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Aportes</h2></div>
+  <form method="post" action="/pagos/{{ payment.id }}/aportes" class="stack">
+    <div class="field">
+      <div class="pill-toggle">
+        <label><input type="radio" name="split_mode" value="custom" checked><span>Editar montos</span></label>
+        <label><input type="radio" name="split_mode" value="auto"><span>Volver a 35/65</span></label>
+      </div>
+    </div>
+    {% for c in payment.contributions %}
+    <div class="split-row">
+      <div>
+        <strong>{{ c.partner.name }}</strong>
+        <span class="muted small">({{ c.partner.pct_share }}%)</span>
+        <div class="muted small">
+          Le correspondía {{ c.should_contribute | ars }} · aportó {{ c.amount_ars | ars }}
+        </div>
+        {% if c.contribution_diff|abs > 0.01 %}
+          <div class="small" style="color:{{ 'var(--warn)' if c.contribution_diff < 0 else 'var(--ok)' }}">
+            {% if c.contribution_diff < 0 %}Puso {{ (-c.contribution_diff) | ars }} de menos
+            {% else %}Puso {{ c.contribution_diff | ars }} de más{% endif %}
+          </div>
+        {% endif %}
+      </div>
+      <input name="contribution_{{ c.partner_id }}" inputmode="decimal"
+             value="{{ '%.2f' % c.amount_ars }}">
+    </div>
+    {% endfor %}
+    <p class="hint">Si un socio puso de más, la diferencia queda a favor suyo en
+      <a href="/socios">Socios</a> (se salda con un movimiento entre socios).</p>
+    <button class="btn btn-primary btn-sm btn-block" type="submit">Guardar aportes</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Comprobantes</h2></div>
+  {% if documents %}
+  <div class="stack">
+    {% for d in documents %}
+    <div class="doc">
+      <span>{{ '📄' if d.content_type == 'application/pdf' else '🖼️' }}</span>
+      <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">{{ d.original_filename }}</a>
+      <form method="post" action="/comprobantes/{{ d.id }}/eliminar"
+            data-confirm="¿Eliminar este comprobante?">
+        <button class="btn btn-danger btn-sm" type="submit">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Sin comprobantes todavía.</p>
+  {% endif %}
+  <form method="post" action="/comprobantes/payment/{{ payment.id }}" enctype="multipart/form-data"
+        class="stack" style="margin-top:12px">
+    <input name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf" required>
+    <button class="btn btn-ghost btn-sm btn-block" type="submit">Subir comprobante</button>
+  </form>
+</div>
+
+{% if payment.purchases %}
+<div class="card">
+  <h2>Compras cubiertas por este pago</h2>
+  <div class="list">
+    {% for c in payment.purchases %}
+      <a class="item" href="/compras/{{ c.id }}">
+        <div class="item-top"><span class="item-title">{{ c.supplier }}</span>
+          <span class="item-amount">{{ c.total_usd | usd }}</span></div>
+        <div class="item-sub">{{ c.date | fecha }}</div>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+# Levanta la app + Caddy (https) en el servidor.
+# Uso:  cd ~/phantomfish/deploy && docker compose up -d --build
+name: phantomfish
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Falta SECRET_KEY en deploy/.env}
+      SEED_PASSWORD: ${SEED_PASSWORD:-phantomfish}
+      DEFAULT_RATE_TYPE: ${DEFAULT_RATE_TYPE:-blue}
+    volumes:
+      - appdata:/data          # base de datos + comprobantes subidos
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Falta SITE_ADDRESS en deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certificados https
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  appdata:
+  caddy_data:
+  caddy_config:
