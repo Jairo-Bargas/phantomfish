@@ -55,14 +55,33 @@
     function totalArs() {
       const amt = parseNum(amount.value);
       const r = parseNum(rate.value);
-      if (currencyValue() === "USD") return round2(amt * r);
+      const cur = currencyValue();
+      if (cur === "USD" || cur === "UYU") return round2(amt * r);
       return amt; // cargado en ARS
     }
     function totalUsd() {
       const amt = parseNum(amount.value);
       const r = parseNum(rate.value);
-      if (currencyValue() === "USD") return amt;
+      const cur = currencyValue();
+      if (cur === "USD") return amt;
+      if (cur === "UYU") return 0; // sin equivalente directo en dólares
       return r > 0 ? round2(amt / r) : 0;
+    }
+    function syncCurrencyUI() {
+      const cur = currencyValue();
+      const rateLabel = $("#rate-label", form);
+      const rateTypeField = rateType ? rateType.closest(".field") : null;
+      if (rateLabel) {
+        rateLabel.textContent =
+          cur === "UYU"
+            ? "Cotización (ARS por peso uruguayo) *"
+            : "Cotización (ARS por dólar) *";
+      }
+      if (rateTypeField) rateTypeField.style.display = cur === "UYU" ? "none" : "";
+      if (outUsd) {
+        const usdTile = outUsd.closest("div");
+        if (usdTile) usdTile.style.opacity = cur === "UYU" ? 0.4 : 1;
+      }
     }
     function isAuto() {
       const checked = splitAuto.find((x) => x.checked);
@@ -83,6 +102,7 @@
       });
     }
     function refreshContribControls() {
+      syncCurrencyUI();
       const auto = isAuto();
       contribInputs.forEach((inp) => (inp.readOnly = auto));
       if (auto) applyAutoSplit();
@@ -124,7 +144,8 @@
         const original = fetchBtn.textContent;
         fetchBtn.textContent = "Consultando…";
         try {
-          const tipo = rateType ? rateType.value : "oficial";
+          const tipo =
+            currencyValue() === "UYU" ? "uyu" : rateType ? rateType.value : "oficial";
           const res = await fetch("/api/exchange-rate?tipo=" + encodeURIComponent(tipo));
           const data = await res.json();
           if (data.sugerido) {

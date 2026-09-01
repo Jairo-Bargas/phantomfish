@@ -17,6 +17,7 @@ from app.models import ExchangeRateLog
 from app.money import rate
 
 BASE_URL = "https://dolarapi.com/v1/dolares"
+COTIZ_URL = "https://dolarapi.com/v1/cotizaciones"
 TIMEOUT = 8.0
 
 # casa de dolarapi por cada tipo que mostramos
@@ -28,6 +29,9 @@ _CASA = {
     "tarjeta": "tarjeta",
     "mayorista": "mayorista",
 }
+
+# monedas que no son dólar (pesos uruguayos, etc.) — otro endpoint de dolarapi
+_MONEDA = {"uyu": "uyu", "brl": "brl", "eur": "eur", "clp": "clp"}
 
 
 class ExchangeRateError(RuntimeError):
@@ -46,9 +50,12 @@ def _parse(payload: dict) -> dict:
 
 
 def fetch_rate(rate_type: str) -> dict:
-    casa = _CASA.get(rate_type, "oficial")
+    if rate_type in _MONEDA:
+        url = f"{COTIZ_URL}/{_MONEDA[rate_type]}"
+    else:
+        url = f"{BASE_URL}/{_CASA.get(rate_type, 'oficial')}"
     try:
-        resp = httpx.get(f"{BASE_URL}/{casa}", timeout=TIMEOUT)
+        resp = httpx.get(url, timeout=TIMEOUT)
         resp.raise_for_status()
         data = _parse(resp.json())
     except (httpx.HTTPError, ValueError) as exc:

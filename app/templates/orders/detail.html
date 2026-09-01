@@ -5,10 +5,12 @@
   <a class="small" href="/pedidos">← Pedidos</a>
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/pedidos/{{ order.id }}/editar">Editar</a>
+    {% if partner.is_owner %}
     <form method="post" action="/pedidos/{{ order.id }}/eliminar"
           data-confirm="¿Eliminar el pedido? Los pagos y compras NO se borran, quedan sin asignar.">
       <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
     </form>
+    {% endif %}
   </div>
 </div>
 

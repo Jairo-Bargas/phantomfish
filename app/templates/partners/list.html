@@ -55,13 +55,19 @@
   <h2>Configuración</h2>
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/categorias">Categorías de pagos</a>
+    <a class="btn btn-ghost btn-sm" href="/respaldos">Respaldos</a>
     <a class="btn btn-ghost btn-sm" href="/datos">Ver base de datos</a>
   </div>
 </div>
 
 <div class="card">
   <h2>Mi cuenta</h2>
-  <p class="small muted">Sesión iniciada como <strong>{{ partner.name }}</strong> ({{ partner.username }}).</p>
+  <p class="small muted">Sesión iniciada como <strong>{{ partner.name }}</strong>
+    ({{ partner.username }}){% if partner.is_owner %} · <span class="badge badge-ok">administrador</span>{% endif %}.</p>
+  {% if not partner.is_owner %}
+  <p class="hint">Eliminar registros (pagos, pedidos, ventas, movimientos) lo puede hacer solo el administrador.
+    Vos podés cargar, editar y sacar comprobantes con la ✕.</p>
+  {% endif %}
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/cuenta/password">Cambiar mi contraseña</a>
     <a class="btn btn-ghost btn-sm" href="/logout">Cerrar sesión</a>

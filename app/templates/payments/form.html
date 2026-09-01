@@ -64,11 +64,14 @@
     <h2>Monto y cotización</h2>
     <div class="field">
       <label>¿En qué moneda se pagó?</label>
-      <div class="pill-toggle">
+      <div class="pill-toggle pill-toggle-3">
+        {% set cur = form.currency_charged or 'USD' %}
         <label><input type="radio" name="currency_charged" value="ARS"
-               {{ 'checked' if form.currency_charged == 'ARS' }}><span>Pesos (ARS)</span></label>
+               {{ 'checked' if cur == 'ARS' }}><span>Pesos&nbsp;($)</span></label>
         <label><input type="radio" name="currency_charged" value="USD"
-               {{ 'checked' if form.currency_charged != 'ARS' }}><span>Dólares (USD)</span></label>
+               {{ 'checked' if cur == 'USD' }}><span>Dólares&nbsp;(US$)</span></label>
+        <label><input type="radio" name="currency_charged" value="UYU"
+               {{ 'checked' if cur == 'UYU' }}><span>Uruguayos&nbsp;($U)</span></label>
       </div>
     </div>
     <div class="grid-2">
@@ -87,7 +90,7 @@
       </div>
     </div>
     <div class="field">
-      <label for="exchange_rate">Cotización (ARS por USD) *</label>
+      <label for="exchange_rate" id="rate-label">Cotización (ARS por dólar) *</label>
       <div class="field-inline">
         <div class="field">
           <input id="exchange_rate" name="exchange_rate" inputmode="decimal"

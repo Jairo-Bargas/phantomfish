@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Respaldos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <form method="post" action="/respaldos/crear">
+    <button class="btn btn-primary btn-sm" type="submit">Crear respaldo ahora</button>
+  </form>
+</div>
+<h1>Respaldos</h1>
+
+<div class="card">
+  <p class="small">
+    La app se guarda sola una copia de la base <strong>cada día</strong> (últimas 14) y una copia
+    completa con comprobantes <strong>cada semana</strong> (últimas 8). Si algo se borra por error,
+    restaurás la copia del día anterior y perdés como mucho lo del último día.
+  </p>
+  <p class="hint">Guardadas en el servidor, en <code>{{ dir }}</code>.
+    Restaurar una copia es una operación delicada — se hace por SSH (ver <code>deploy/RESTAURAR.md</code>).</p>
+</div>
+
+{% if backups %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Archivo</th><th>Tipo</th><th class="num">Tamaño</th><th>Fecha</th><th></th></tr></thead>
+      <tbody>
+        {% for b in backups %}
+        <tr>
+          <td>{{ b.name }}</td>
+          <td>{{ b.kind }}</td>
+          <td class="num">{{ b.size_mb }} MB</td>
+          <td>{{ b.at | fechahora }}</td>
+          <td><a class="btn btn-ghost btn-sm" href="/respaldos/{{ b.name }}/descargar">Descargar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="empty">
+    <div class="empty-ico">💾</div>
+    <p>Todavía no hay respaldos. Se crea uno solo en las próximas horas, o tocá "Crear respaldo ahora".</p>
+  </div>
+{% endif %}
+{% endblock %}

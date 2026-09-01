@@ -20,13 +20,16 @@ from app.services.exchange_rate import (
 router = APIRouter(prefix="/api")
 
 
+_EXTRA_KINDS = {"uyu", "brl", "eur", "clp"}
+
+
 @router.get("/exchange-rate")
 async def exchange_rate(
     tipo: str = "oficial",
     partner: Partner = Depends(get_current_partner),
     db: Session = Depends(get_db),
 ):
-    if tipo not in valid_codes("rate_type"):
+    if tipo not in valid_codes("rate_type") and tipo not in _EXTRA_KINDS:
         tipo = "oficial"
     try:
         data = fetch_and_log(db, tipo)

@@ -34,9 +34,26 @@
         <input id="date" name="date" type="date" value="{{ form.date }}" required>
       </div>
       <div class="field">
-        <label for="amount_ars">Monto (ARS) *</label>
-        <input id="amount_ars" name="amount_ars" inputmode="decimal"
-               value="{{ form.amount_ars or '' }}" required placeholder="30000.00">
+        <label for="s-currency">Moneda</label>
+        <select id="s-currency" name="currency">
+          {% set scur = form.currency or 'ARS' %}
+          {% for code, label in OPTIONS['settlement_currency'] %}
+            <option value="{{ code }}" {{ 'selected' if scur == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="amount_original">Monto *</label>
+        <input id="amount_original" name="amount_original" inputmode="decimal"
+               value="{{ form.amount_original or form.amount_ars or '' }}" required placeholder="30000.00">
+      </div>
+      <div class="field" id="s-rate-field" {{ 'style=display:none' if (form.currency or 'ARS') == 'ARS' }}>
+        <label for="s-rate">Cotización a pesos argentinos *</label>
+        <input id="s-rate" name="exchange_rate" inputmode="decimal"
+               value="{{ form.exchange_rate or '' }}" placeholder="1450.00">
+        <div class="hint">Cuántos pesos argentinos por cada unidad de esa moneda.</div>
       </div>
     </div>
     <div class="field">
@@ -47,6 +64,15 @@
         {% endfor %}
       </select>
     </div>
+    <script>
+      (function () {
+        var cur = document.getElementById('s-currency');
+        var rf = document.getElementById('s-rate-field');
+        if (cur && rf) cur.addEventListener('change', function () {
+          rf.style.display = cur.value === 'ARS' ? 'none' : '';
+        });
+      })();
+    </script>
     <div class="field">
       <label for="concept">Concepto</label>
       <input id="concept" name="concept" value="{{ form.concept or '' }}"

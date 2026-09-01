@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from sqlalchemy.orm import Session
 
 from app.audit import record, snapshot
-from app.auth import get_current_partner
+from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
 from app.models import Order, Partner
@@ -226,7 +226,7 @@ async def update_view(
 async def delete_view(
     order_id: int,
     request: Request,
-    partner: Partner = Depends(get_current_partner),
+    partner: Partner = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
     order = load_order(db, order_id)

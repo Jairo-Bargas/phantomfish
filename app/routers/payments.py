@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.audit import record, snapshot
-from app.auth import get_current_partner
+from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
 from app.money import ZERO, dsum, money, rate
@@ -286,12 +286,14 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
     if status not in valid_codes("payment_status"):
         raise ValueError("Estado inválido.")
     currency = (form.get("currency_charged") or "").upper()
-    if currency not in {"ARS", "USD"}:
-        raise ValueError("Elegí la moneda (ARS o USD).")
+    if currency not in {"ARS", "USD", "UYU"}:
+        raise ValueError("Elegí la moneda (pesos, dólares o pesos uruguayos).")
     rate_type = form.get("exchange_rate_type") or "oficial"
+    if currency == "UYU":
+        rate_type = "uyu"
 
     amount_original = _parse_amount(str(form.get("amount_original") or ""), "Monto")
-    exchange_rate = rate(str(form.get("exchange_rate") or "").replace(",", "."))
+    exchange_rate = rate(str(form.get("exchange_rate") or "0").replace(",", "."))
 
     amounts = compute_amounts(
         currency_charged=currency,
@@ -497,7 +499,7 @@ async def update_contributions(
 async def delete_payment(
     payment_id: int,
     request: Request,
-    partner: Partner = Depends(get_current_partner),
+    partner: Partner = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
     payment = _load_payment(db, payment_id)

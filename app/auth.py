@@ -64,3 +64,13 @@ def get_current_partner(
             headers={"Location": "/login"},
         )
     return partner
+
+
+def require_owner(partner: Partner = Depends(get_current_partner)) -> Partner:
+    """Solo el administrador puede eliminar registros."""
+    if not getattr(partner, "is_owner", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el administrador puede eliminar registros.",
+        )
+    return partner

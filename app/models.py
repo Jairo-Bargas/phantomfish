@@ -42,6 +42,8 @@ class Partner(Base):
     username: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Administrador: puede eliminar registros (pagos, pedidos, ventas, etc.).
+    is_owner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -314,6 +316,10 @@ class Settlement(Base):
     date: Mapped[dt.date] = mapped_column(Date, nullable=False)
     from_partner_id: Mapped[int] = mapped_column(ForeignKey("partners.id"), nullable=False)
     to_partner_id: Mapped[int] = mapped_column(ForeignKey("partners.id"), nullable=False)
+    # En qué moneda se pagó y cuánto (congelado). amount_ars es el valor convertido.
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="ARS")
+    amount_original: Mapped[Decimal] = mapped_column(Money(), nullable=False, default=Decimal(0))
+    exchange_rate: Mapped[Decimal] = mapped_column(Rate(), nullable=False, default=Decimal(1))
     amount_ars: Mapped[Decimal] = mapped_column(Money(), nullable=False)
     method: Mapped[str] = mapped_column(String(20), nullable=False, default="transferencia")
     concept: Mapped[str | None] = mapped_column(String(255))

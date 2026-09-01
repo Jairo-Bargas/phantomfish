@@ -35,7 +35,7 @@ def seed_partners(db: Session) -> list[Partner]:
         return existing
 
     created = []
-    for name, pct, username in settings.seed_partners:
+    for idx, (name, pct, username) in enumerate(settings.seed_partners):
         partner = Partner(
             name=name,
             pct_share=Decimal(pct),
@@ -43,11 +43,22 @@ def seed_partners(db: Session) -> list[Partner]:
             password_hash=hash_password(settings.seed_password),
             must_change_password=True,
             active=True,
+            is_owner=(idx == 0),  # el primero (Jairo) es el administrador
         )
         db.add(partner)
         created.append(partner)
     db.commit()
     return created
+
+
+def ensure_owner(db: Session) -> None:
+    """Garantiza que haya al menos un administrador (el socio de menor id)."""
+    if db.scalar(select(Partner).where(Partner.is_owner.is_(True))):
+        return
+    first = db.scalar(select(Partner).order_by(Partner.id).limit(1))
+    if first:
+        first.is_owner = True
+        db.commit()
 
 
 def init_db() -> None:
@@ -58,6 +69,7 @@ def init_db() -> None:
     with SessionLocal() as db:
         seed_partners(db)
         seed_categories(db)
+        ensure_owner(db)
 
 
 if __name__ == "__main__":

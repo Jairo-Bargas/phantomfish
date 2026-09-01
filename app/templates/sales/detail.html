@@ -5,10 +5,12 @@
   <a class="small" href="/ventas">← Ventas</a>
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/ventas/{{ sale.id }}/editar">Editar</a>
+    {% if partner.is_owner %}
     <form method="post" action="/ventas/{{ sale.id }}/eliminar"
           data-confirm="¿Eliminar esta venta? No se puede deshacer.">
       <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
     </form>
+    {% endif %}
   </div>
 </div>
 

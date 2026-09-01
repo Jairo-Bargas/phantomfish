@@ -10,12 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit import record, snapshot
-from app.auth import get_current_partner
+from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
-from app.money import money
+from app.money import money, rate
 from app.models import Partner, Settlement
 from app.services.documents import attach_files, list_documents
+from app.services.payments import settlement_ars
 from app.services.settlements import list_settlements, load_settlement
 from app.services.summary import build_summary
 from app.web import flash, redirect, render
@@ -84,6 +85,7 @@ async def new_view(
                 "from_partner_id": str(other.id),
                 "to_partner_id": str(partner.id),
                 "method": "transferencia",
+                "currency": "ARS",
             },
         },
         db=db,
@@ -109,7 +111,12 @@ async def create_view(
             raise ValueError("Elegí los dos socios.")
         if from_id == to_id:
             raise ValueError("El que paga y el que recibe no pueden ser el mismo socio.")
-        amount = _parse_amount(str(form.get("amount_ars") or ""))
+        currency = (form.get("currency") or "ARS").upper()
+        if currency not in valid_codes("settlement_currency"):
+            currency = "ARS"
+        amount_original = _parse_amount(str(form.get("amount_original") or form.get("amount_ars") or ""))
+        exch = rate(str(form.get("exchange_rate") or "1").replace(",", ".")) if currency != "ARS" else rate(1)
+        amount_ars = settlement_ars(currency, amount_original, exch)
         method = form.get("method") or "transferencia"
         if method not in valid_codes("settlement_method"):
             method = "otro"
@@ -122,7 +129,10 @@ async def create_view(
         date=date,
         from_partner_id=from_id,
         to_partner_id=to_id,
-        amount_ars=amount,
+        currency=currency,
+        amount_original=amount_original,
+        exchange_rate=exch,
+        amount_ars=amount_ars,
         method=method,
         concept=(form.get("concept") or "").strip() or None,
         notes=(form.get("notes") or "").strip() or None,
@@ -140,7 +150,7 @@ async def create_view(
         flash(request, e, "error")
 
     record(db, obj=settlement, action="insert", changed_by=partner.username,
-           summary=f"Movimiento entre socios: {money(amount)} ARS")
+           summary=f"Movimiento entre socios: {money(amount_ars)} ARS")
     db.commit()
     msg = f"Movimiento registrado ({saved} comprobante/s)." if saved else "Movimiento registrado."
     return redirect(f"/socios/movimientos/{settlement.id}", request, msg)
@@ -190,7 +200,7 @@ async def detail_view(
 async def delete_view(
     settlement_id: int,
     request: Request,
-    partner: Partner = Depends(get_current_partner),
+    partner: Partner = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
     settlement = load_settlement(db, settlement_id)

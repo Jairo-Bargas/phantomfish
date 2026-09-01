@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -17,10 +19,29 @@ from app.templating import templates
 settings = get_settings()
 
 
+async def _backup_loop() -> None:
+    from app.services import backups
+
+    while True:
+        try:
+            made = await asyncio.to_thread(backups.run_scheduled)
+            if made:
+                print("Respaldo automático:", ", ".join(made))
+        except Exception as exc:  # noqa: BLE001
+            print("Error en respaldo automático:", exc)
+        await asyncio.sleep(6 * 3600)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
-    yield
+    task = asyncio.create_task(_backup_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 app = FastAPI(title=settings.app_name, version=__version__, lifespan=lifespan)
@@ -37,6 +58,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), na
 
 from app.routers import (  # noqa: E402
     auth_routes,
+    backups as backups_router,
     categories,
     dashboard,
     data_browser,
@@ -62,6 +84,7 @@ app.include_router(reports.router)
 app.include_router(settlements.router)
 app.include_router(partners.router)
 app.include_router(categories.router)
+app.include_router(backups_router.router)
 app.include_router(documents.router)
 app.include_router(exchange.router)
 app.include_router(export.router)
@@ -75,6 +98,17 @@ async def unauthorized_handler(request: Request, _exc):
 
         return JSONResponse({"detail": "No autenticado"}, status_code=401)
     return RedirectResponse(url="/login", status_code=303)
+
+
+@app.exception_handler(403)
+async def forbidden_handler(request: Request, exc):
+    from app.web import flash
+
+    detail = getattr(exc, "detail", "No tenés permiso para hacer esto.")
+    with contextlib.suppress(Exception):
+        flash(request, detail, "error")
+    back = request.headers.get("referer") or "/"
+    return RedirectResponse(url=back, status_code=303)
 
 
 @app.get("/healthz")

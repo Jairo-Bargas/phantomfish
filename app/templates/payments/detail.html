@@ -5,10 +5,12 @@
   <a class="small" href="/pagos">← Pagos</a>
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/pagos/{{ payment.id }}/editar">Editar</a>
+    {% if partner.is_owner %}
     <form method="post" action="/pagos/{{ payment.id }}/eliminar"
           data-confirm="¿Eliminar este pago y sus comprobantes? No se puede deshacer.">
       <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
     </form>
+    {% endif %}
   </div>
 </div>
 
@@ -22,10 +24,16 @@
   </div>
   <div class="tiles">
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ payment.amount_ars | ars }}</div></div>
+    {% if payment.currency_charged == 'UYU' %}
+    <div class="tile"><div class="k">Pagado</div><div class="v">{{ payment.amount_original | moneda('UYU') }}</div></div>
+    <div class="tile"><div class="k">Cotización</div><div class="v">{{ payment.exchange_rate | rate }}</div>
+      <div class="k">ARS por $U</div></div>
+    {% else %}
     <div class="tile"><div class="k">Total USD</div><div class="v">{{ payment.amount_usd | usd }}</div></div>
-    <div class="tile"><div class="k">Cargado en</div><div class="v">{{ payment.currency_charged }} {{ payment.amount_original | ars if payment.currency_charged=='ARS' else payment.amount_original | usd }}</div></div>
+    <div class="tile"><div class="k">Cargado en</div><div class="v">{{ payment.amount_original | moneda(payment.currency_charged) }}</div></div>
     <div class="tile"><div class="k">Cotización</div><div class="v">{{ payment.exchange_rate | rate }}</div>
       <div class="k">{{ label_for('rate_type', payment.exchange_rate_type) }}</div></div>
+    {% endif %}
   </div>
   {% if payment.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ payment.notes }}</p>{% endif %}
 </div>

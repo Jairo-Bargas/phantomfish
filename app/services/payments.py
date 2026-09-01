@@ -20,33 +20,54 @@ class PaymentAmounts:
     exchange_rate: Decimal
 
 
+_CURRENCIES = {"ARS", "USD", "UYU"}
+
+
 def compute_amounts(
     *, currency_charged: str, amount_original: Decimal, exchange_rate: Decimal
 ) -> PaymentAmounts:
-    """Calcula el monto en la otra moneda a partir de la cotización confirmada.
+    """Calcula ARS y USD a partir de la moneda y la cotización confirmada.
 
-    - Si se cargó en USD: ARS = original * cotización.
-    - Si se cargó en ARS: USD = original / cotización.
+    - USD: la cotización es ARS por dólar.  ARS = original * cotización; USD = original.
+    - UYU: la cotización es ARS por peso uruguayo.  ARS = original * cotización; USD = 0.
+    - ARS: la cotización es ARS por dólar (solo para el equivalente en USD).
     """
     currency_charged = currency_charged.upper()
     amount_original = money(amount_original)
     exchange_rate = rate(exchange_rate)
 
-    if exchange_rate <= ZERO:
-        raise ValueError("La cotización tiene que ser mayor a cero.")
+    if currency_charged not in _CURRENCIES:
+        raise ValueError("Moneda inválida (usá pesos, dólares o pesos uruguayos).")
     if amount_original <= ZERO:
         raise ValueError("El monto tiene que ser mayor a cero.")
+    if currency_charged != "ARS" and exchange_rate <= ZERO:
+        raise ValueError("La cotización tiene que ser mayor a cero.")
 
     if currency_charged == "USD":
         amount_usd = amount_original
         amount_ars = money(amount_original * exchange_rate)
-    elif currency_charged == "ARS":
+    elif currency_charged == "UYU":
+        amount_ars = money(amount_original * exchange_rate)
+        amount_usd = ZERO
+    else:  # ARS
         amount_ars = amount_original
-        amount_usd = money(amount_original / exchange_rate)
-    else:
-        raise ValueError("Moneda inválida (usá ARS o USD).")
+        amount_usd = money(amount_original / exchange_rate) if exchange_rate > ZERO else ZERO
 
     return PaymentAmounts(amount_ars=amount_ars, amount_usd=amount_usd, exchange_rate=exchange_rate)
+
+
+def settlement_ars(currency: str, amount_original: Decimal, exchange_rate: Decimal) -> Decimal:
+    """Convierte un movimiento entre socios a pesos argentinos (valor congelado)."""
+    currency = (currency or "ARS").upper()
+    amount_original = money(amount_original)
+    if amount_original <= ZERO:
+        raise ValueError("El monto tiene que ser mayor a cero.")
+    if currency == "ARS":
+        return amount_original
+    r = rate(exchange_rate)
+    if r <= ZERO:
+        raise ValueError("La cotización tiene que ser mayor a cero.")
+    return money(amount_original * r)
 
 
 def active_partners(db: Session) -> list[Partner]:

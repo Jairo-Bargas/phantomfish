@@ -3,10 +3,12 @@
 {% block content %}
 <div class="section-head">
   <a class="small" href="/socios/movimientos">← Movimientos</a>
+  {% if partner.is_owner %}
   <form method="post" action="/socios/movimientos/{{ settlement.id }}/eliminar"
         data-confirm="¿Eliminar este movimiento y su comprobante? No se puede deshacer.">
     <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
   </form>
+  {% endif %}
 </div>
 
 <div class="card">
@@ -15,7 +17,11 @@
     {{ settlement.date | fecha }} · {{ label_for('settlement_method', settlement.method) }}
   </div>
   <div class="tiles">
-    <div class="tile"><div class="k">Monto</div><div class="v">{{ settlement.amount_ars | ars }}</div></div>
+    <div class="tile"><div class="k">Monto (ARS)</div><div class="v">{{ settlement.amount_ars | ars }}</div></div>
+    {% if settlement.currency and settlement.currency != 'ARS' %}
+    <div class="tile"><div class="k">Pagado en</div><div class="v">{{ settlement.amount_original | moneda(settlement.currency) }}</div>
+      <div class="k">cotización {{ settlement.exchange_rate | rate }}</div></div>
+    {% endif %}
     <div class="tile"><div class="k">Pagó</div><div class="v">{{ settlement.from_partner.name }}</div></div>
     <div class="tile"><div class="k">Recibió</div><div class="v">{{ settlement.to_partner.name }}</div></div>
   </div>

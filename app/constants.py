@@ -22,9 +22,13 @@ PAYMENT_STATUS = [
 ]
 
 CURRENCIES = [
-    ("ARS", "Pesos (ARS)"),
-    ("USD", "Dólares (USD)"),
+    ("ARS", "Pesos argentinos ($)"),
+    ("USD", "Dólares (US$)"),
+    ("UYU", "Pesos uruguayos ($U)"),
 ]
+
+# Cómo pedirle la cotización a dolarapi según la moneda del pago.
+CURRENCY_RATE_KIND = {"USD": None, "UYU": "uyu"}  # USD usa el tipo elegido; UYU es fijo
 
 RATE_TYPES = [
     ("oficial", "Oficial"),
@@ -77,6 +81,12 @@ SETTLEMENT_METHODS = [
     ("otro", "Otro"),
 ]
 
+SETTLEMENT_CURRENCIES = [
+    ("ARS", "Pesos argentinos ($)"),
+    ("USD", "Dólares (US$)"),
+    ("UYU", "Pesos uruguayos ($U)"),
+]
+
 ENTITY_TYPES = ["payment", "purchase", "sale", "settlement"]
 
 _ALL = {
@@ -89,6 +99,7 @@ _ALL = {
     "payment_method": PAYMENT_METHODS,
     "sale_status": SALE_STATUS,
     "settlement_method": SETTLEMENT_METHODS,
+    "settlement_currency": SETTLEMENT_CURRENCIES,
     "order_status": ORDER_STATUS,
 }
 

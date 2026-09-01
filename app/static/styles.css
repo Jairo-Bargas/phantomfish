@@ -229,6 +229,7 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 .pill-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .pill-toggle input:checked + span { color: var(--primary); }
 .pill-toggle label:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.pill-toggle-3 label { font-size: .76rem; padding: 9px 3px; }
 
 @media (min-width: 620px) {
   .tiles { grid-template-columns: repeat(4, 1fr); }

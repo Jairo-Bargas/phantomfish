@@ -40,6 +40,19 @@ def money_usd(value) -> str:
     return f"{signo}US$ {miles},{dec}"
 
 
+_CUR_PREFIX = {"ARS": "$", "USD": "US$", "UYU": "$U"}
+
+
+def money_cur(value, currency: str = "ARS") -> str:
+    if value is None or value == "":
+        return "—"
+    d = Decimal(str(value)).quantize(Decimal("0.01"))
+    entero, _, dec = f"{abs(d):.2f}".partition(".")
+    miles = f"{int(entero):,}".replace(",", ".")
+    signo = "-" if d < 0 else ""
+    return f"{signo}{_CUR_PREFIX.get((currency or 'ARS').upper(), '$')} {miles},{dec}"
+
+
 def rate_fmt(value) -> str:
     if value is None:
         return "—"
@@ -83,6 +96,7 @@ def datetime_fmt(value) -> str:
 
 templates.env.filters["ars"] = money_ars
 templates.env.filters["usd"] = money_usd
+templates.env.filters["moneda"] = money_cur
 templates.env.filters["rate"] = rate_fmt
 templates.env.filters["qty"] = qty_fmt
 templates.env.filters["pct"] = pct_fmt

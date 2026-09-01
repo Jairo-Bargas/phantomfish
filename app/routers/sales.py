@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.audit import record, snapshot
-from app.auth import get_current_partner
+from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
 from app.money import ZERO, dsum
@@ -273,7 +273,7 @@ async def update_sale(
 async def delete_sale(
     sale_id: int,
     request: Request,
-    partner: Partner = Depends(get_current_partner),
+    partner: Partner = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
     sale = _load(db, sale_id)

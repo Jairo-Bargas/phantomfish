@@ -184,7 +184,7 @@ def test_operativo_payment_not_in_order(auth_client):
         data={"date": "2027-02-01", "status": "abierto", "markup_pct": "100"},
         follow_redirects=True,
     )
-    order_id = str(o.url).rstrip("/").split("/")[-1]
+    assert o.status_code == 200
     auth_client.post(
         "/pagos",
         data={"concept": "Alquiler febrero", "date": "2027-02-03", "category": "gasto_operativo",

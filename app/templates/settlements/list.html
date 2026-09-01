@@ -23,6 +23,7 @@
       <div class="item-sub">
         {{ s.date | fecha }}
         · {{ label_for('settlement_method', s.method) }}
+        {% if s.currency and s.currency != 'ARS' %}· <span class="badge">{{ s.amount_original | moneda(s.currency) }}</span>{% endif %}
         {% if s.concept %}· {{ s.concept }}{% endif %}
         {% if s.documents %}· 📎 {{ s.documents | length }}{% endif %}
       </div>
