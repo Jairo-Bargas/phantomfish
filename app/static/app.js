@@ -34,7 +34,7 @@
   if (payForm) initPaymentForm(payForm);
 
   function initPaymentForm(form) {
-    const currency = $("[name=currency_charged]", form);
+    const currencyRadios = $$("[name=currency_charged]", form);
     const amount = $("[name=amount_original]", form);
     const rate = $("[name=exchange_rate]", form);
     const rateType = $("[name=exchange_rate_type]", form);
@@ -48,16 +48,20 @@
     const box = $("#control-box");
     const pcts = JSON.parse(form.dataset.pcts || "{}");
 
+    function currencyValue() {
+      const c = currencyRadios.find((r) => r.checked);
+      return c ? c.value : "USD";
+    }
     function totalArs() {
       const amt = parseNum(amount.value);
       const r = parseNum(rate.value);
-      if (currency.value === "USD") return round2(amt * r);
+      if (currencyValue() === "USD") return round2(amt * r);
       return amt; // cargado en ARS
     }
     function totalUsd() {
       const amt = parseNum(amount.value);
       const r = parseNum(rate.value);
-      if (currency.value === "USD") return amt;
+      if (currencyValue() === "USD") return amt;
       return r > 0 ? round2(amt / r) : 0;
     }
     function isAuto() {
@@ -105,9 +109,10 @@
       }
     }
 
-    [currency, amount, rate].forEach((el) =>
+    [amount, rate].forEach((el) =>
       el && el.addEventListener("input", refreshContribControls)
     );
+    currencyRadios.forEach((el) => el.addEventListener("change", refreshContribControls));
     splitAuto.forEach((el) => el.addEventListener("change", refreshContribControls));
     contribInputs.forEach((el) => el.addEventListener("input", updateControl));
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import time
 from decimal import Decimal
 
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,10 @@ from app.config import BASE_DIR, get_settings
 from app.constants import _ALL, label_for
 
 settings = get_settings()
+
+# Cambia en cada arranque (= cada deploy). Se agrega como ?v= a los CSS/JS para
+# que el navegador no sirva una versión vieja cacheada.
+ASSET_VERSION = str(int(time.time()))
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
@@ -86,4 +91,5 @@ templates.env.filters["fechahora"] = datetime_fmt
 templates.env.globals["label_for"] = label_for
 templates.env.globals["OPTIONS"] = _ALL
 templates.env.globals["APP_NAME"] = settings.app_name
+templates.env.globals["ASSET_V"] = ASSET_VERSION
 templates.env.globals["today"] = lambda: dt.date.today().isoformat()
