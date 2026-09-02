@@ -517,6 +517,14 @@ async def delete_payment(
         delete_file(doc.file_reference)
         db.delete(doc)
 
+    # movimientos entre socios que lo referenciaban: se desvinculan (no se borran)
+    from app.models import Purchase, Settlement
+
+    for s in db.scalars(select(Settlement).where(Settlement.payment_id == payment.id)):
+        s.payment_id = None
+    for pu in db.scalars(select(Purchase).where(Purchase.payment_id == payment.id)):
+        pu.payment_id = None
+
     record(db, obj=payment, action="delete", changed_by=partner.username,
            summary=f"Baja de pago #{payment.id}: {payment.concept}", old=snapshot(payment))
     db.delete(payment)

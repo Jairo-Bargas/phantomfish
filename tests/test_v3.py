@@ -200,3 +200,31 @@ def test_settlement_non_ars_requires_rate(auth_client):
         follow_redirects=True,
     )
     assert "cotización" in r.text.lower()
+
+
+def test_deleting_payment_unlinks_settlement(auth_client):
+    auth_client.post(
+        "/pagos",
+        data={"concept": "Pago con link", "date": "2027-01-01", "category": "otro", "status": "pagado",
+              "currency_charged": "ARS", "amount_original": "100000", "exchange_rate": "1000",
+              "exchange_rate_type": "oficial", "split_mode": "auto"},
+        follow_redirects=True,
+    )
+    import re
+    pid = re.search(r"/pagos/(\d+)", auth_client.get("/pagos", params={"q": "Pago con link"}).text).group(1)
+    r = auth_client.post(
+        "/socios/movimientos",
+        data={"from_partner_id": "2", "to_partner_id": "1", "date": "2027-01-05",
+              "currency": "ARS", "amount_original": "65000", "method": "transferencia",
+              "payment_id": pid, "concept": "mov con link"},
+        follow_redirects=True,
+    )
+    sid = re.search(r"/socios/movimientos/(\d+)", str(r.url)).group(1)
+    assert "Pago con link" in auth_client.get(f"/socios/movimientos/{sid}").text
+
+    # borrar el pago (Jairo es admin) -> el movimiento queda, sin el vínculo
+    d = auth_client.post(f"/pagos/{pid}/eliminar", follow_redirects=True)
+    assert "eliminado" in d.text.lower()
+    sd = auth_client.get(f"/socios/movimientos/{sid}").text
+    assert "mov con link" in sd
+    assert "Relacionado con el pago" not in sd

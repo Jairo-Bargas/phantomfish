@@ -43,21 +43,30 @@ def _parse_amount(value: str) -> Decimal:
     return d
 
 
-def _recent_payments(db: Session) -> list[Payment]:
-    return list(
-        db.scalars(select(Payment).order_by(Payment.date.desc(), Payment.id.desc()).limit(60))
+def _recent_payments(db: Session, include_id: int | None = None) -> list[Payment]:
+    rows = list(
+        db.scalars(select(Payment).order_by(Payment.date.desc(), Payment.id.desc()).limit(80))
     )
+    if include_id and not any(p.id == include_id for p in rows):
+        extra = db.get(Payment, include_id)
+        if extra:
+            rows.append(extra)
+    return rows
 
 
 def _form_ctx(db: Session, partner: Partner, form: dict, settlement=None):
     partners = list(db.scalars(select(Partner).order_by(Partner.id)))
+    try:
+        linked = int(form.get("payment_id") or 0) or None
+    except (TypeError, ValueError):
+        linked = None
     return {
         "partner": partner,
         "active_nav": "socios",
         "partners": partners,
         "settlement": settlement,
         "form": form,
-        "payments": _recent_payments(db),
+        "payments": _recent_payments(db, linked),
         "last_usd": last_rate(db, "USD"),
         "last_uyu": last_rate(db, "UYU"),
     }
