@@ -67,6 +67,12 @@
       if (cur === "UYU") return 0; // sin equivalente directo en dólares
       return r > 0 ? round2(amt / r) : 0;
     }
+    // En "nuevo pago" la cotización que trae el server es solo una sugerencia:
+    // al cambiar de moneda la reemplazamos por la de esa moneda. Si el usuario
+    // ya la tocó, o si está editando un pago existente, la respetamos.
+    let rateDirty = form.dataset.editing === "1";
+    if (rate) rate.addEventListener("input", () => (rateDirty = true));
+
     function syncCurrencyUI() {
       const cur = currencyValue();
       const rateLabel = $("#rate-label", form);
@@ -81,6 +87,9 @@
       if (outUsd) {
         const usdTile = outUsd.closest("div");
         if (usdTile) usdTile.style.opacity = cur === "UYU" ? 0.4 : 1;
+      }
+      if (rate && !rateDirty) {
+        rate.value = (cur === "UYU" ? form.dataset.rateUyu : form.dataset.rateUsd) || "";
       }
     }
     function isAuto() {

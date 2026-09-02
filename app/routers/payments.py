@@ -24,6 +24,7 @@ from app.services.payments import (
     apply_contributions,
     compute_amounts,
     default_split,
+    last_rate_for_currency,
     parse_date,
 )
 from app.services.periods import month_bounds, month_label, month_options
@@ -213,6 +214,7 @@ async def new_payment(
         },
         "contributions": {p.id: ZERO for p in partners},
         "pct_by_partner": {str(p.id): str(p.pct_share) for p in partners},
+        "last_uyu_rate": last_rate_for_currency(db, "UYU"),
     }
     ctx.update(_rate_context(db, settings.default_rate_type))
     return render(request, "payments/form.html", ctx, db=db)

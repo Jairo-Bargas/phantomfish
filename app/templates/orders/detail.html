@@ -38,9 +38,11 @@
   </div>
   {% if costing.units > 0 %}
   <div class="control control-ok" style="margin-top:12px">
-    <div><div class="k">Costo promedio por señuelo</div><div class="v">{{ costing.avg_landed_ars | ars }}</div></div>
+    <div><div class="k">Costo promedio (todos los modelos)</div><div class="v">{{ costing.avg_landed_ars | ars }}</div></div>
     <div><div class="k">En dólares</div><div class="v">{{ costing.avg_landed_usd | usd }}</div></div>
   </div>
+  <p class="hint" style="margin-top:6px">Es el promedio del pedido entero.
+    <strong>El costo real de cada modelo está en la tabla de abajo</strong> — cada uno con su precio del proveedor.</p>
   {% endif %}
   <p class="hint">El flete, la aduana y las comisiones se reparten entre las {{ costing.units | qty }} unidades
     (partes iguales). Costos operativos (contadora, alquiler) <strong>no</strong> van acá — se cubren con el margen.</p>
@@ -48,7 +50,12 @@
 
 {% if costing.models %}
 <div class="card">
-  <h2>Costo y precio por modelo</h2>
+  <h2>Costo y precio de venta por modelo</h2>
+  {% if costing.models | length == 1 %}
+  <p class="hint">Cargaste la mercadería como <strong>un solo ítem</strong>. Si los modelos tienen precios
+    distintos del proveedor, <a href="/compras">editá la compra</a> y cargá cada modelo en su propia fila:
+    así el pedido te da el costo y el precio de venta de cada uno.</p>
+  {% endif %}
   <div class="table-wrap">
     <table class="data">
       <thead><tr>

@@ -56,6 +56,18 @@ def compute_amounts(
     return PaymentAmounts(amount_ars=amount_ars, amount_usd=amount_usd, exchange_rate=exchange_rate)
 
 
+def last_rate_for_currency(db: Session, currency: str) -> Decimal | None:
+    """Cotización del último pago cargado en esa moneda (para sugerir la propia,
+    p.ej. la de Prex para pesos uruguayos)."""
+    row = db.scalar(
+        select(Payment.exchange_rate)
+        .where(Payment.currency_charged == currency.upper())
+        .order_by(Payment.date.desc(), Payment.id.desc())
+        .limit(1)
+    )
+    return row
+
+
 def settlement_ars(currency: str, amount_original: Decimal, exchange_rate: Decimal) -> Decimal:
     """Convierte un movimiento entre socios a pesos argentinos (valor congelado)."""
     currency = (currency or "ARS").upper()

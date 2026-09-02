@@ -11,6 +11,9 @@
       action="{{ '/pagos/' ~ payment.id if payment else '/pagos' }}"
       enctype="multipart/form-data"
       data-pcts='{{ pct_by_partner | tojson }}'
+      data-rate-usd="{{ suggested_rate or '' }}"
+      data-rate-uyu="{{ last_uyu_rate | rate if last_uyu_rate else '' }}"
+      data-editing="{{ '1' if payment else '' }}"
       class="stack">
 
   <div class="card">
@@ -99,8 +102,9 @@
         <button type="button" id="fetch-rate" class="btn btn-ghost btn-sm">Traer de dolarapi</button>
       </div>
       <div class="hint" id="rate-note">
-        {% if suggested_rate %}Sugerido {{ suggested_rate | rate }} ({{ rate_source or 'dolarapi.com' }}). Confirmá antes de guardar.
-        {% else %}El valor se registra tal como lo confirmás vos. No se recalcula después.{% endif %}
+        Poné la cotización que <strong>usaste vos</strong> (Prex, la del banco, etc.).
+        El botón trae la de dolarapi solo como referencia. El valor queda congelado, no se recalcula.
+        {% if suggested_rate %}<br>Referencia dólar: {{ suggested_rate | rate }} ({{ rate_source or 'dolarapi.com' }}).{% endif %}
       </div>
     </div>
     <div class="control control-ok" style="margin-top:6px">
