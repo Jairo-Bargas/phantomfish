@@ -3,12 +3,15 @@
 {% block content %}
 <div class="section-head">
   <a class="small" href="/socios/movimientos">← Movimientos</a>
-  {% if partner.is_owner %}
-  <form method="post" action="/socios/movimientos/{{ settlement.id }}/eliminar"
-        data-confirm="¿Eliminar este movimiento y su comprobante? No se puede deshacer.">
-    <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
-  </form>
-  {% endif %}
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="/socios/movimientos/{{ settlement.id }}/editar">Editar</a>
+    {% if partner.is_owner %}
+    <form method="post" action="/socios/movimientos/{{ settlement.id }}/eliminar"
+          data-confirm="¿Eliminar este movimiento y su comprobante? No se puede deshacer.">
+      <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+    </form>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card">
@@ -27,6 +30,11 @@
   </div>
   {% if settlement.concept %}<p class="small" style="margin-top:10px"><strong>Concepto:</strong> {{ settlement.concept }}</p>{% endif %}
   {% if settlement.notes %}<p class="small"><strong>Notas:</strong> {{ settlement.notes }}</p>{% endif %}
+  {% if linked_payment %}
+  <p class="small"><strong>Relacionado con el pago:</strong>
+    <a href="/pagos/{{ linked_payment.id }}">{{ linked_payment.concept }}</a>
+    ({{ linked_payment.date | fecha }} · {{ linked_payment.amount_ars | ars }})</p>
+  {% endif %}
 </div>
 
 <div class="card">

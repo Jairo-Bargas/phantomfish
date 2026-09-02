@@ -7,15 +7,10 @@
 </div>
 
 <div class="card">
-  <div class="section-head"><h2>Saldo entre socios</h2>
-    <a class="small" href="/socios/movimientos">Ver movimientos →</a></div>
-  {% include "settlements/_balance.html" %}
-</div>
-
-{% if recent_settlements %}
-<div class="card">
-  <div class="section-head"><h2>Últimos movimientos</h2>
-    <a class="small" href="/socios/movimientos">Todos</a></div>
+  <div class="section-head"><h2>Entre socios</h2>
+    <a class="small" href="/socios/movimientos">Ver todos →</a></div>
+  <p class="hint">Comprobantes de la plata que un socio le pasó al otro. Es un archivo, no afecta cálculos.</p>
+  {% if recent_settlements %}
   <div class="list">
     {% for s in recent_settlements %}
       <a class="item" href="/socios/movimientos/{{ s.id }}">
@@ -26,8 +21,8 @@
       </a>
     {% endfor %}
   </div>
+  {% endif %}
 </div>
-{% endif %}
 
 <div class="card">
   <h2>Porcentajes de reparto</h2>

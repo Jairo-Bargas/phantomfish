@@ -1,15 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Registrar movimiento{% endblock %}
+{% block title %}{{ 'Editar movimiento' if settlement else 'Registrar movimiento' }}{% endblock %}
 {% block content %}
 <div class="section-head">
-  <h1>Registrar movimiento entre socios</h1>
-  <a class="btn btn-ghost btn-sm" href="/socios/movimientos">Cancelar</a>
+  <h1>{{ 'Editar movimiento entre socios' if settlement else 'Registrar movimiento entre socios' }}</h1>
+  <a class="btn btn-ghost btn-sm"
+     href="{{ '/socios/movimientos/' ~ settlement.id if settlement else '/socios/movimientos' }}">Cancelar</a>
 </div>
 
-<form method="post" action="/socios/movimientos" enctype="multipart/form-data" class="stack">
+<form id="settlement-form" method="post"
+      action="{{ '/socios/movimientos/' ~ settlement.id if settlement else '/socios/movimientos' }}"
+      enctype="multipart/form-data" class="stack"
+      data-rate-usd="{{ last_usd | rate if last_usd else '' }}"
+      data-rate-uyu="{{ last_uyu | rate if last_uyu else '' }}"
+      data-editing="{{ '1' if settlement else '' }}">
   <div class="card">
-    <p class="hint">Registrá cuando un socio le paga o le devuelve plata al otro (su parte de un
-      gasto que pagó el otro, un préstamo, etc.). Esto <strong>no</strong> es un costo de la empresa.</p>
+    <p class="hint">Registrá cuando un socio le paga o le devuelve plata al otro. Esto <strong>no</strong>
+      es un costo de la empresa y <strong>no afecta ningún cálculo</strong> — es solo el comprobante.</p>
     <div class="grid-2">
       <div class="field">
         <label for="from_partner_id">Pagó / transfirió *</label>
@@ -45,15 +51,15 @@
     </div>
     <div class="grid-2">
       <div class="field">
-        <label for="amount_original">Monto *</label>
+        <label for="amount_original">Monto (en esa moneda) *</label>
         <input id="amount_original" name="amount_original" inputmode="decimal"
                value="{{ form.amount_original or form.amount_ars or '' }}" required placeholder="30000.00">
       </div>
-      <div class="field" id="s-rate-field" {{ 'style=display:none' if (form.currency or 'ARS') == 'ARS' }}>
+      <div class="field" id="s-rate-field" {% if (form.currency or 'ARS') == 'ARS' %}hidden{% endif %}>
         <label for="s-rate">Cotización a pesos argentinos *</label>
         <input id="s-rate" name="exchange_rate" inputmode="decimal"
                value="{{ form.exchange_rate or '' }}" placeholder="1450.00">
-        <div class="hint">Cuántos pesos argentinos por cada unidad de esa moneda.</div>
+        <div class="hint" id="s-rate-hint">Cuántos $ argentinos por cada unidad de esa moneda.</div>
       </div>
     </div>
     <div class="field">
@@ -64,32 +70,60 @@
         {% endfor %}
       </select>
     </div>
-    <script>
-      (function () {
-        var cur = document.getElementById('s-currency');
-        var rf = document.getElementById('s-rate-field');
-        if (cur && rf) cur.addEventListener('change', function () {
-          rf.style.display = cur.value === 'ARS' ? 'none' : '';
-        });
-      })();
-    </script>
+    <div class="field">
+      <label for="payment_id">¿Relacionado con qué pago? (opcional)</label>
+      <select id="payment_id" name="payment_id">
+        <option value="">— Ninguno —</option>
+        {% for p in payments %}
+          <option value="{{ p.id }}" {{ 'selected' if form.payment_id == p.id|string }}>
+            {{ p.date | fecha }} · {{ p.concept[:45] }} · {{ p.amount_ars | ars }}
+          </option>
+        {% endfor %}
+      </select>
+      <div class="hint">Solo para acordarte a qué gasto corresponde. No cambia ningún número.</div>
+    </div>
     <div class="field">
       <label for="concept">Concepto</label>
       <input id="concept" name="concept" value="{{ form.concept or '' }}"
-             placeholder="Ej: su parte del pago al proveedor #45" maxlength="255">
+             placeholder="Ej: su parte del pago a la contadora de diciembre" maxlength="255">
     </div>
     <div class="field">
       <label for="notes">Notas</label>
       <textarea id="notes" name="notes" placeholder="Opcional">{{ form.notes or '' }}</textarea>
     </div>
+    {% if not settlement %}
     <div class="field">
       <label for="comprobantes">Comprobante (transferencia, recibo)</label>
       <input id="comprobantes" name="comprobantes" type="file" multiple
              accept=".pdf,image/*,application/pdf">
       <div class="hint">PDF o foto. También se puede agregar después.</div>
     </div>
+    {% endif %}
   </div>
-  <button class="btn btn-primary btn-block" type="submit">Registrar</button>
+  <button class="btn btn-primary btn-block" type="submit">
+    {{ 'Guardar cambios' if settlement else 'Registrar' }}
+  </button>
   <div class="fab-space"></div>
 </form>
+
+<script>
+(function () {
+  var f = document.getElementById('settlement-form');
+  var cur = document.getElementById('s-currency');
+  var rf = document.getElementById('s-rate-field');
+  var rate = document.getElementById('s-rate');
+  var hint = document.getElementById('s-rate-hint');
+  var dirty = f.dataset.editing === '1' || (rate && rate.value !== '');
+  if (rate) rate.addEventListener('input', function () { dirty = true; });
+  function sync() {
+    var c = cur.value;
+    if (c === 'ARS') { rf.hidden = true; return; }
+    rf.hidden = false;
+    if (hint) hint.textContent = 'Cuántos $ argentinos por cada ' +
+      (c === 'UYU' ? 'peso uruguayo' : 'dólar') + '.';
+    if (!dirty) rate.value = (c === 'UYU' ? f.dataset.rateUyu : f.dataset.rateUsd) || '';
+  }
+  if (cur) { cur.addEventListener('change', sync); sync(); }
+})();
+</script>
 {% endblock %}

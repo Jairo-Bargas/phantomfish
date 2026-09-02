@@ -6,11 +6,8 @@
   <a class="btn btn-primary btn-sm" href="/socios/movimientos/nuevo">+ Registrar</a>
 </div>
 <h1>Movimientos entre socios</h1>
-
-<div class="card">
-  <h2>Saldo neto entre socios</h2>
-  {% include "settlements/_balance.html" %}
-</div>
+<p class="hint">Registro de la plata que un socio le pasó al otro (devoluciones, préstamos...),
+  con su comprobante. Es solo un archivo — no afecta ningún cálculo de la app.</p>
 
 {% if settlements %}
 <div class="list">

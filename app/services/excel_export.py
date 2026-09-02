@@ -277,25 +277,18 @@ def _sheet_resumen(wb: Workbook, db: Session, partners: list[Partner], date_from
     labels = [
         ("Le correspondía aportar", "should_contribute"),
         ("Aportó realmente", "did_contribute"),
-        ("Saldo por aportes", "balance"),
-        ("Le devolvió al otro socio", "settled_out"),
-        ("Recibió del otro socio", "settled_in"),
-        ("SALDO NETO (después de devoluciones)", "net_balance"),
+        ("Diferencia (aportó − correspondía)", "balance"),
     ]
     for text_label, attr in labels:
         r += 1
-        lc = ws.cell(row=r, column=2, value=text_label)
-        if attr == "net_balance":
-            lc.font = TOTAL_FONT
+        ws.cell(row=r, column=2, value=text_label)
         for i, ps in enumerate(summary.partners):
             c = ws.cell(row=r, column=3 + i, value=_dec(getattr(ps, attr)))
             c.number_format = MONEY_FMT
-            if attr == "net_balance":
-                c.font = TOTAL_FONT
 
     r += 2
-    ws.cell(row=r, column=2, value="Saldo neto positivo = a ese socio todavía le deben esa plata. "
-            "Negativo = todavía la debe.").font = SUBTITLE_FONT
+    ws.cell(row=r, column=2, value="Las devoluciones entre socios se registran aparte "
+            "(hoja Movimientos_Socios) — no se descuentan acá.").font = SUBTITLE_FONT
 
     r += 3
     ws.cell(row=r, column=2, value="RESULTADO DEL PERÍODO").font = TOTAL_FONT

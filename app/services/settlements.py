@@ -49,3 +49,18 @@ def other_partner(db: Session, partner: Partner) -> Partner | None:
     return db.scalar(
         select(Partner).where(Partner.id != partner.id, Partner.active.is_(True)).order_by(Partner.id)
     )
+
+
+def last_rate(db: Session, currency: str):
+    """Última cotización usada en esa moneda — primero en movimientos, si no en pagos."""
+    from app.services.payments import last_rate_for_currency
+
+    r = db.scalar(
+        select(Settlement.exchange_rate)
+        .where(Settlement.currency == currency.upper(), Settlement.exchange_rate > 0)
+        .order_by(Settlement.date.desc(), Settlement.id.desc())
+        .limit(1)
+    )
+    if r and r > 1:
+        return r
+    return last_rate_for_currency(db, currency)

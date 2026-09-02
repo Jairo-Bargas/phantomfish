@@ -58,11 +58,11 @@
 </div>
 
 <div class="card">
-  <div class="section-head"><h2>Socios</h2><a class="small" href="/socios">Ver / saldar →</a></div>
+  <div class="section-head"><h2>Socios</h2><a class="small" href="/socios">Ver →</a></div>
   <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Socio</th><th class="num">%</th><th class="num">Le correspondía</th>
-        <th class="num">Aportó</th><th class="num">Saldo neto</th><th class="num">Gcia. según %</th></tr></thead>
+        <th class="num">Aportó</th><th class="num">Gcia. según %</th></tr></thead>
       <tbody>
         {% for ps in summary.partners %}
         <tr>
@@ -70,16 +70,14 @@
           <td class="num">{{ ps.pct_share }}%</td>
           <td class="num">{{ ps.should_contribute | ars }}</td>
           <td class="num">{{ ps.did_contribute | ars }}</td>
-          <td class="num" style="font-weight:700;color:{{ 'var(--ok)' if ps.net_balance >= 0 else 'var(--danger)' }}">
-            {{ ps.net_balance | ars }}</td>
           <td class="num">{{ ps.profit_share | ars }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <p class="hint">Saldo neto = lo de los aportes menos las devoluciones ya hechas entre ustedes.
-    Positivo = todavía le deben; negativo = todavía debe.</p>
+  <p class="hint">"Le correspondía" vs "Aportó" en los pagos del período. Cuando un socio paga de más,
+    la devolución del otro se registra (con comprobante) en <a href="/socios/movimientos">Entre socios</a>.</p>
 </div>
 
 <div class="card">

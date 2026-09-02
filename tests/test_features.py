@@ -84,39 +84,29 @@ def test_monthly_report(auth_client):
 # ------------------------------------------------------------- movimientos socios
 
 
-def test_settlement_adjusts_balance(auth_client):
-    # Jairo (id 1, 35%) paga entero un pago de 100.000 -> Sebastián le debe 65.000
-    _make_payment(
-        auth_client,
-        "Pago cubierto por Jairo",
-        "2026-12-01",
-        100000,
-        split_mode="custom",
-        contribution_1="100000",
-        contribution_2="0",
-    )
-    dash = auth_client.get("/socios")
-    assert "Sebastián le debe a Jairo" in dash.text or "le debe" in dash.text
-
-    # Sebastián le transfiere 40.000 a Jairo
+def test_settlement_is_a_plain_ledger(auth_client):
+    """Los movimientos entre socios son solo un registro: no tocan cálculos."""
     resp = auth_client.post(
         "/socios/movimientos",
         data={
             "from_partner_id": "2",
             "to_partner_id": "1",
             "date": "2026-12-05",
-            "amount_ars": "40000",
+            "currency": "ARS",
+            "amount_original": "40000",
             "method": "transferencia",
             "concept": "Parte del pago",
         },
         follow_redirects=True,
     )
     assert resp.status_code == 200
-    assert "Parte del pago" in resp.text or "registrado" in resp.text.lower()
+    assert "Parte del pago" in resp.text
 
-    # ahora el saldo neto pendiente es 25.000
-    socios = auth_client.get("/socios")
-    assert "25.000" in socios.text
+    # aparece en la lista, pero NO hay panel de "debe a quién"
+    lst = auth_client.get("/socios/movimientos").text
+    assert "Parte del pago" in lst
+    assert "le debe a" not in lst.lower()
+    assert "saldo neto" not in lst.lower()
 
 
 def test_settlement_same_partner_rejected(auth_client):

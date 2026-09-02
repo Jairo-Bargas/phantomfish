@@ -155,3 +155,48 @@ def test_backups_page_and_create(auth_client):
     assert r.status_code == 200
     page = auth_client.get("/respaldos").text
     assert "db-" in page  # apareció al menos un respaldo diario
+
+
+def test_settlement_edit_and_payment_link(auth_client):
+    # un pago para relacionar
+    auth_client.post(
+        "/pagos",
+        data={"concept": "Contadora diciembre", "date": "2026-12-01", "category": "costos_administrativos",
+              "status": "pagado", "currency_charged": "ARS", "amount_original": "200000",
+              "exchange_rate": "1000", "exchange_rate_type": "oficial", "split_mode": "auto"},
+        follow_redirects=True,
+    )
+    import re
+    payid = re.search(r"/pagos/(\d+)", auth_client.get("/pagos", params={"q": "Contadora diciembre"}).text).group(1)
+
+    r = auth_client.post(
+        "/socios/movimientos",
+        data={"from_partner_id": "2", "to_partner_id": "1", "date": "2026-12-10",
+              "currency": "ARS", "amount_original": "130000", "method": "transferencia",
+              "payment_id": payid, "concept": "su parte contadora"},
+        follow_redirects=True,
+    )
+    sid = re.search(r"/socios/movimientos/(\d+)", str(r.url)).group(1)
+    assert "Contadora diciembre" in auth_client.get(f"/socios/movimientos/{sid}").text
+
+    # editar: cambiar el monto
+    r = auth_client.post(
+        f"/socios/movimientos/{sid}",
+        data={"from_partner_id": "2", "to_partner_id": "1", "date": "2026-12-10",
+              "currency": "ARS", "amount_original": "140000", "method": "transferencia",
+              "payment_id": payid, "concept": "su parte contadora (corregido)"},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    page = auth_client.get(f"/socios/movimientos/{sid}").text
+    assert "140.000" in page and "corregido" in page
+
+
+def test_settlement_non_ars_requires_rate(auth_client):
+    r = auth_client.post(
+        "/socios/movimientos",
+        data={"from_partner_id": "2", "to_partner_id": "1", "date": "2026-12-10",
+              "currency": "USD", "amount_original": "100", "method": "transferencia"},
+        follow_redirects=True,
+    )
+    assert "cotización" in r.text.lower()

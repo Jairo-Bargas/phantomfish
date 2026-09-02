@@ -13,7 +13,6 @@ from app.auth import get_current_partner
 from app.database import get_db
 from app.models import AuditLog, Partner
 from app.services.settlements import list_settlements
-from app.services.summary import build_summary
 from app.web import flash, redirect, render
 
 router = APIRouter(prefix="/socios")
@@ -30,7 +29,6 @@ async def list_partners(
     recent_audit = list(
         db.scalars(select(AuditLog).order_by(AuditLog.changed_at.desc()).limit(30))
     )
-    summary = build_summary(db)
     recent_settlements = list_settlements(db, limit=6)
     return render(
         request,
@@ -41,7 +39,6 @@ async def list_partners(
             "partners": partners,
             "total_pct": total_pct,
             "recent_audit": recent_audit,
-            "summary": summary,
             "recent_settlements": recent_settlements,
         },
         db=db,

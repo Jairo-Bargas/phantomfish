@@ -322,6 +322,8 @@ class Settlement(Base):
     exchange_rate: Mapped[Decimal] = mapped_column(Rate(), nullable=False, default=Decimal(1))
     amount_ars: Mapped[Decimal] = mapped_column(Money(), nullable=False)
     method: Mapped[str] = mapped_column(String(20), nullable=False, default="transferencia")
+    # Vínculo opcional a un pago (solo informativo, no afecta cálculos).
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"))
     concept: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str | None] = mapped_column(String(60))

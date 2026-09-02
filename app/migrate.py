@@ -17,6 +17,7 @@ _ADD_COLUMNS: list[tuple[str, str, str]] = [
     ("settlements", "currency", "TEXT NOT NULL DEFAULT 'ARS'"),
     ("settlements", "amount_original", "TEXT"),
     ("settlements", "exchange_rate", "TEXT"),
+    ("settlements", "payment_id", "INTEGER REFERENCES payments(id)"),
 ]
 
 # Se corren después de agregar columnas, solo si la columna acaba de aparecer.
