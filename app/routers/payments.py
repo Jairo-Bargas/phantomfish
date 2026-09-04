@@ -314,6 +314,7 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         amount_usd=amounts.amount_usd,
         status=status,
         order_id=_resolve_order_id(db, form.get("order_id")),
+        invoice_number=(form.get("invoice_number") or "").strip() or None,
         notes=(form.get("notes") or "").strip() or None,
     )
 
@@ -407,6 +408,7 @@ async def edit_payment(
             "exchange_rate": f"{payment.exchange_rate.normalize():f}",
             "exchange_rate_type": payment.exchange_rate_type,
             "order_id": str(payment.order_id or ""),
+            "invoice_number": payment.invoice_number or "",
             "notes": payment.notes or "",
         },
         "contributions": {p.id: contrib.get(p.id, ZERO) for p in partners},
@@ -442,7 +444,7 @@ async def update_payment(
     for field in (
         "date", "concept", "category", "currency_charged", "amount_original",
         "exchange_rate", "exchange_rate_type", "amount_ars", "amount_usd", "status",
-        "order_id", "notes",
+        "order_id", "invoice_number", "notes",
     ):
         setattr(payment, field, getattr(new_data, field))
     apply_contributions(db, payment, amounts_by_partner)

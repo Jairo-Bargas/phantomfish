@@ -8,9 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Partner
+from app.models import Accountant, Partner
 
 SESSION_KEY = "partner_id"
+ACCOUNTANT_SESSION_KEY = "accountant_id"
 
 
 def hash_password(plain: str) -> str:
@@ -74,3 +75,36 @@ def require_owner(partner: Partner = Depends(get_current_partner)) -> Partner:
             detail="Solo el administrador puede eliminar registros.",
         )
     return partner
+
+
+# --------------------------------------------------------------- contadora (solo lectura)
+
+
+def authenticate_accountant(db: Session, username: str, password: str) -> Accountant | None:
+    acc = db.scalar(
+        select(Accountant).where(func.lower(Accountant.username) == username.strip().lower())
+    )
+    if acc and acc.active and verify_password(password, acc.password_hash):
+        return acc
+    return None
+
+
+def login_accountant_session(request: Request, acc: Accountant) -> None:
+    request.session[ACCOUNTANT_SESSION_KEY] = acc.id
+
+
+def logout_accountant_session(request: Request) -> None:
+    request.session.pop(ACCOUNTANT_SESSION_KEY, None)
+
+
+def get_current_accountant_optional(
+    request: Request, db: Session = Depends(get_db)
+) -> Accountant | None:
+    aid = request.session.get(ACCOUNTANT_SESSION_KEY)
+    if not aid:
+        return None
+    acc = db.get(Accountant, aid)
+    if acc is None or not acc.active:
+        request.session.pop(ACCOUNTANT_SESSION_KEY, None)
+        return None
+    return acc

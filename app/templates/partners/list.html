@@ -52,6 +52,9 @@
     <a class="btn btn-ghost btn-sm" href="/categorias">Categorías de pagos</a>
     <a class="btn btn-ghost btn-sm" href="/respaldos">Respaldos</a>
     <a class="btn btn-ghost btn-sm" href="/datos">Ver base de datos</a>
+    {% if partner.is_owner %}
+    <a class="btn btn-ghost btn-sm" href="/socios/contadora">Acceso de la contadora</a>
+    {% endif %}
   </div>
 </div>
 

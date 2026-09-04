@@ -61,6 +61,12 @@
         <div class="hint">Solo los costos de importación van a un pedido (proveedor, flete, aduana). Contadora, alquiler, etc. → dejá "Ninguno".</div>
       </div>
     </div>
+    <div class="field">
+      <label for="invoice_number">N° de factura (opcional)</label>
+      <input id="invoice_number" name="invoice_number" value="{{ form.invoice_number or '' }}"
+             placeholder="Ej: A-0001-00001234">
+      <div class="hint">Si la contadora te pasó un número de factura para este pago, cargalo acá.</div>
+    </div>
   </div>
 
   <div class="card">

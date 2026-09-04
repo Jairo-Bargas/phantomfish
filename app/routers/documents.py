@@ -9,10 +9,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.audit import record
-from app.auth import get_current_partner
+from app.auth import get_current_accountant_optional, get_current_partner, get_current_partner_optional
 from app.constants import ENTITY_TYPES
 from app.database import get_db
-from app.models import Document, Partner, Payment, Purchase, Sale, Settlement
+from app.models import Accountant, Document, Partner, Payment, Purchase, Sale, Settlement
 from app.services.documents import attach_files, remove_document
 from app.storage import absolute_path
 from app.web import flash, redirect
@@ -64,15 +64,23 @@ async def upload(
     return redirect(f"{_BACK[entity_type]}/{entity_id}")
 
 
+_ACCOUNTANT_ENTITY_TYPES = {"payment", "sale"}
+
+
 @router.get("/{doc_id}/ver")
 async def view_document(
     doc_id: int,
-    partner: Partner = Depends(get_current_partner),
+    partner: Partner | None = Depends(get_current_partner_optional),
+    accountant: Accountant | None = Depends(get_current_accountant_optional),
     db: Session = Depends(get_db),
 ):
+    if partner is None and accountant is None:
+        return redirect("/login")
     doc = db.get(Document, doc_id)
     if not doc:
         return redirect("/")
+    if partner is None and doc.entity_type not in _ACCOUNTANT_ENTITY_TYPES:
+        return redirect("/contadora")
     path = absolute_path(doc.file_reference)
     if not path.exists():
         return redirect("/")

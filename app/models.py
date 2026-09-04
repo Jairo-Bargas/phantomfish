@@ -50,6 +50,24 @@ class Partner(Base):
     contributions: Mapped[list["PaymentContribution"]] = relationship(back_populates="partner")
 
 
+class Accountant(Base):
+    """Usuario de la contadora: acceso de solo lectura a facturas (pagos y ventas).
+
+    A propósito NO es un Partner: no tiene % de reparto y no aparece en ningún
+    desplegable de aportes/movimientos entre socios.
+    """
+
+    __tablename__ = "accountants"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    username: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Category(Base):
     """Categorías de pagos, editables por el usuario desde la app."""
 
@@ -121,6 +139,7 @@ class Payment(Base):
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pagado")
     order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
+    invoice_number: Mapped[str | None] = mapped_column(String(80))  # factura recibida (contadora)
     notes: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str | None] = mapped_column(String(60))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -268,6 +287,7 @@ class Sale(Base):
     channel: Mapped[str | None] = mapped_column(String(20))
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False, default="transferencia")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="cobrado")
+    invoice_number: Mapped[str | None] = mapped_column(String(80))  # factura emitida (contadora)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -368,6 +388,7 @@ class AuditLog(Base):
 
 
 __all__ = [
+    "Accountant",
     "AuditLog",
     "Category",
     "Document",

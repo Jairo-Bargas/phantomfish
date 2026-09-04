@@ -21,6 +21,7 @@
     · {{ cat_label(payment.category) }}
     · <span class="badge">{{ label_for('payment_status', payment.status) }}</span>
     {% if payment.order %}· <a href="/pedidos/{{ payment.order.id }}">{{ payment.order.display_name }}</a>{% endif %}
+    {% if payment.invoice_number %}· Factura {{ payment.invoice_number }}{% endif %}
   </div>
   <div class="tiles">
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ payment.amount_ars | ars }}</div></div>

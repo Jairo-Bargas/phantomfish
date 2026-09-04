@@ -19,9 +19,17 @@
       <a href="/logout" class="chip chip-ghost">Salir</a>
     </div>
   </header>
+{% elif accountant %}
+  <header class="topbar">
+    <a href="/contadora" class="brand">🎣 {{ APP_NAME }}</a>
+    <div class="topbar-right">
+      <span class="chip" title="Contadora">{{ accountant.name }}</span>
+      <a href="/contadora/salir" class="chip chip-ghost">Salir</a>
+    </div>
+  </header>
 {% endif %}
 
-  <main class="content{% if not partner %} content-plain{% endif %}">
+  <main class="content{% if not partner and not accountant %} content-plain{% endif %}">
     {% if flashes %}
       <div class="flashes">
         {% for f in flashes %}

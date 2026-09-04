@@ -21,6 +21,7 @@
     {% if sale.channel %}· {{ label_for('sale_channel', sale.channel) }}{% endif %}
     · {{ label_for('payment_method', sale.payment_method) }}
     · <span class="badge">{{ label_for('sale_status', sale.status) }}</span>
+    {% if sale.invoice_number %}· Factura {{ sale.invoice_number }}{% endif %}
   </div>
   <div class="tiles">
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ sale.total_ars | ars }}</div></div>

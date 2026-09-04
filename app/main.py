@@ -57,6 +57,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), na
 
 
 from app.routers import (  # noqa: E402
+    accountant,
     auth_routes,
     backups as backups_router,
     categories,
@@ -75,6 +76,7 @@ from app.routers import (  # noqa: E402
 )
 
 app.include_router(auth_routes.router)
+app.include_router(accountant.router)
 app.include_router(dashboard.router)
 app.include_router(payments.router)
 app.include_router(orders.router)

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Facturas{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1>Facturas</h1>
+  <a class="small" href="/contadora/password">Cambiar contraseña</a>
+</div>
+
+<form method="get" action="/contadora" class="card card-tight">
+  <div class="field" style="margin-bottom:8px">
+    <label for="mes">Mes</label>
+    <select id="mes" name="mes" onchange="this.form.submit()">
+      {% for code, label in months %}
+        <option value="{{ code }}" {{ 'selected' if mes == code }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <details {{ 'open' if use_range }}>
+    <summary class="small" style="cursor:pointer">o elegir un rango de fechas</summary>
+    <div class="grid-2" style="margin-top:8px">
+      <div><label>Desde</label><input type="date" name="desde" value="{{ desde }}"></div>
+      <div><label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}"></div>
+    </div>
+    <button class="btn btn-sm btn-primary" type="submit" style="margin-top:8px">Aplicar rango</button>
+  </details>
+</form>
+
+<h2 style="margin:4px 0 12px">{{ titulo }}</h2>
+
+<div class="tiles" style="margin-bottom:14px">
+  <div class="tile"><div class="k">Facturas recibidas (pagos)</div><div class="v">{{ total_pagos | ars }}</div></div>
+  <div class="tile"><div class="k">Facturas emitidas (ventas)</div><div class="v">{{ total_ventas | ars }}</div></div>
+</div>
+
+<div class="card">
+  <h2>Facturas recibidas — Pagos ({{ payments | length }})</h2>
+  {% if payments %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Fecha</th><th>Concepto</th><th>Categoría</th><th>N° factura</th>
+        <th class="num">Monto</th><th>Comprobantes</th>
+      </tr></thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.date | fecha }}</td>
+          <td style="white-space:normal">{{ p.concept }}</td>
+          <td>{{ cat_label(p.category) }}</td>
+          <td>{{ p.invoice_number or '—' }}</td>
+          <td class="num">{{ p.amount_ars | ars }}
+            {% if p.currency_charged != 'ARS' %}<br><span class="muted small">{{ p.amount_original | moneda(p.currency_charged) }}</span>{% endif %}
+          </td>
+          <td>
+            {% for d in pay_docs.get(p.id, []) %}
+              <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">📄 {{ loop.index }}</a>{{ ' ' if not loop.last }}
+            {% else %}<span class="muted">—</span>{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td colspan="4" style="font-weight:700">Total</td>
+        <td class="num" style="font-weight:700">{{ total_pagos | ars }}</td><td></td></tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted small">No hay pagos en este período.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Facturas emitidas — Ventas ({{ sales | length }})</h2>
+  {% if sales %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Fecha</th><th>Cliente / Canal</th><th>N° factura</th>
+        <th class="num">Monto</th><th>Comprobantes</th>
+      </tr></thead>
+      <tbody>
+        {% for s in sales %}
+        <tr>
+          <td>{{ s.date | fecha }}</td>
+          <td style="white-space:normal">{{ s.customer or '—' }}{% if s.channel %} · {{ label_for('sale_channel', s.channel) }}{% endif %}</td>
+          <td>{{ s.invoice_number or '—' }}</td>
+          <td class="num">{{ s.total_ars | ars }}</td>
+          <td>
+            {% for d in sale_docs.get(s.id, []) %}
+              <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">📄 {{ loop.index }}</a>{{ ' ' if not loop.last }}
+            {% else %}<span class="muted">—</span>{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td colspan="3" style="font-weight:700">Total</td>
+        <td class="num" style="font-weight:700">{{ total_ventas | ars }}</td><td></td></tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted small">No hay ventas en este período.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Acceso de la contadora{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <h1>Acceso de la contadora</h1>
+</div>
+
+<div class="card">
+  <p class="hint">Le creás un usuario propio, separado del tuyo y del de Sebastián. Con ese usuario
+    entra en <code>/contadora</code> y ve solo pagos y ventas por fecha (con sus comprobantes) —
+    nada de aportes, pedidos ni movimientos entre ustedes.</p>
+</div>
+
+{% if accountants %}
+<div class="card">
+  <h2>Usuarios existentes</h2>
+  <div class="stack">
+    {% for a in accountants %}
+    <div class="split-row">
+      <div>
+        <strong>{{ a.name }}</strong> <span class="muted small">· {{ a.username }}</span>
+        {% if a.active %}<span class="badge badge-ok">Activo</span>{% else %}<span class="badge">Desactivado</span>{% endif %}
+      </div>
+    </div>
+    <form method="post" action="/socios/contadora/{{ a.id }}/reset" class="field-inline">
+      <input name="password" type="text" placeholder="Nueva contraseña (mín. 6)" minlength="6" required>
+      <button class="btn btn-ghost btn-sm" type="submit">Resetear contraseña</button>
+    </form>
+    <form method="post" action="/socios/contadora/{{ a.id }}/activar">
+      <button class="btn btn-ghost btn-sm" type="submit">{{ 'Desactivar' if a.active else 'Activar' }}</button>
+    </form>
+    <hr class="sep">
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Crear un usuario nuevo</h2>
+  <form method="post" action="/socios/contadora" class="stack">
+    <div class="field">
+      <label for="name">Nombre</label>
+      <input id="name" name="name" required placeholder="Ej: María Pérez">
+    </div>
+    <div class="field">
+      <label for="username">Usuario (opcional, se genera solo)</label>
+      <input id="username" name="username" autocapitalize="none" placeholder="contadora">
+    </div>
+    <div class="field">
+      <label for="password">Contraseña inicial</label>
+      <input id="password" name="password" type="text" minlength="6" required placeholder="Mínimo 6 caracteres">
+      <div class="hint">Se la pasás vos. Al entrar por primera vez le va a pedir que la cambie.</div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Crear usuario</button>
+  </form>
+</div>
+{% endblock %}

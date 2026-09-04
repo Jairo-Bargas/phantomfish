@@ -32,6 +32,7 @@ def render(
         "request": request,
         "flashes": pop_flashes(request),
         "partner": None,
+        "accountant": None,
         "active_nav": None,
         "categorias": [],
         "cat_label": lambda code: code or "",

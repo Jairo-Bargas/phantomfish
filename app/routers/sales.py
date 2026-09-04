@@ -155,6 +155,7 @@ def _build_from_form(form: dict) -> Sale:
         channel=channel,
         payment_method=method,
         status=status,
+        invoice_number=(form.get("invoice_number") or "").strip() or None,
         notes=(form.get("notes") or "").strip() or None,
     )
 
@@ -221,6 +222,7 @@ async def edit_sale(
                 "channel": sale.channel or "",
                 "payment_method": sale.payment_method,
                 "status": sale.status,
+                "invoice_number": sale.invoice_number or "",
                 "notes": sale.notes or "",
             },
             "items": [
@@ -258,7 +260,9 @@ async def update_sale(
         flash(request, "Agregá al menos un producto vendido.", "error")
         return _rerender(request, partner, form, status_code=400, sale=sale)
 
-    for field in ("date", "customer", "channel", "payment_method", "status", "notes"):
+    for field in (
+        "date", "customer", "channel", "payment_method", "status", "invoice_number", "notes",
+    ):
         setattr(sale, field, getattr(data, field))
     sale.items.clear()
     for it in items:
