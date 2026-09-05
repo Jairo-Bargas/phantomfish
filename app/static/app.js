@@ -141,7 +141,14 @@
     [amount, rate].forEach((el) =>
       el && el.addEventListener("input", refreshContribControls)
     );
-    currencyRadios.forEach((el) => el.addEventListener("change", refreshContribControls));
+    // Cambiar de moneda => querés la cotización de esa moneda: volvemos a
+    // permitir el prellenado automático (salvo que después la toques o la traigas).
+    currencyRadios.forEach((el) =>
+      el.addEventListener("change", () => {
+        if (form.dataset.editing !== "1") rateDirty = false;
+        refreshContribControls();
+      })
+    );
     splitAuto.forEach((el) => el.addEventListener("change", refreshContribControls));
     contribInputs.forEach((el) => el.addEventListener("input", updateControl));
 
@@ -199,6 +206,7 @@
           const data = await res.json();
           if (data.sugerido) {
             rate.value = parseFloat(data.sugerido).toFixed(2);
+            rateDirty = true; // que syncCurrencyUI no lo vuelva a pisar
             const note = $("#rate-note");
             if (note)
               note.textContent =
