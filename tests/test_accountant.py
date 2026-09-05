@@ -204,6 +204,36 @@ def test_accountant_cannot_reach_partner_routes(accountant_client):
         assert r.headers["location"] == "/login"
 
 
+def test_accountant_dashboard_defaults_to_all_dates(accountant_client):
+    page = accountant_client.get("/contadora").text
+    assert "Todas las fechas" in page
+
+
+def test_owner_can_hide_payment_from_accountant(auth_client, accountant_client):
+    auth_client.post(
+        "/pagos",
+        data={
+            "concept": "Pago proveedor por fuera", "date": "2026-09-20", "category": "importacion",
+            "status": "pagado", "currency_charged": "USD", "amount_original": "1000",
+            "exchange_rate": "1000", "exchange_rate_type": "oficial", "split_mode": "auto",
+            "billable": "1",
+        },
+        follow_redirects=True,
+    )
+    pid = re.search(
+        r"/pagos/(\d+)", auth_client.get("/pagos", params={"q": "Pago proveedor por fuera"}).text
+    ).group(1)
+    assert "Pago proveedor por fuera" in accountant_client.get("/contadora").text
+
+    r = auth_client.post(f"/pagos/{pid}/facturable", follow_redirects=True)
+    assert "no lo ve" in r.text.lower()
+    assert "Pago proveedor por fuera" not in accountant_client.get("/contadora").text
+
+    # y se puede volver a mostrar
+    auth_client.post(f"/pagos/{pid}/facturable", follow_redirects=True)
+    assert "Pago proveedor por fuera" in accountant_client.get("/contadora").text
+
+
 # ------------------------------------------------------------- comprobantes (scoping)
 
 

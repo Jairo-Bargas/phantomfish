@@ -5,6 +5,11 @@
   <a class="small" href="/pagos">← Pagos</a>
   <div class="btn-row">
     <a class="btn btn-ghost btn-sm" href="/pagos/{{ payment.id }}/editar">Editar</a>
+    <form method="post" action="/pagos/{{ payment.id }}/facturable">
+      <button class="btn btn-ghost btn-sm" type="submit">
+        {{ 'Ocultar de la contadora' if payment.billable else 'Mostrar a la contadora' }}
+      </button>
+    </form>
     {% if partner.is_owner %}
     <form method="post" action="/pagos/{{ payment.id }}/eliminar"
           data-confirm="¿Eliminar este pago y sus comprobantes? No se puede deshacer.">

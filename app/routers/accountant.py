@@ -122,7 +122,7 @@ async def dashboard(
         titulo = month_label(mes)
     else:
         date_from = date_to = None
-        titulo = "Todo"
+        titulo = "Todas las fechas"
 
     # La contadora solo ve pagos facturables.
     pay_stmt = select(Payment).options(selectinload(Payment.order)).where(

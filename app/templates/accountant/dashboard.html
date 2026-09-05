@@ -10,6 +10,7 @@
   <div class="field" style="margin-bottom:8px">
     <label for="mes">Mes</label>
     <select id="mes" name="mes" onchange="this.form.submit()">
+      <option value="" {{ 'selected' if not mes }}>Todas las fechas</option>
       {% for code, label in months %}
         <option value="{{ code }}" {{ 'selected' if mes == code }}>{{ label }}</option>
       {% endfor %}

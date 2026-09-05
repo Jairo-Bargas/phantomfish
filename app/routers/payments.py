@@ -553,6 +553,27 @@ async def update_payment(
     return redirect(f"/pagos/{payment.id}", request, "Pago actualizado.")
 
 
+@router.post("/{payment_id}/facturable")
+async def toggle_billable(
+    payment_id: int,
+    request: Request,
+    partner: Partner = Depends(get_current_partner),
+    db: Session = Depends(get_db),
+):
+    """Muestra u oculta el pago (y sus comprobantes) en el panel de la contadora."""
+    payment = _load_payment(db, payment_id)
+    if not payment:
+        flash(request, "No se encontró el pago.", "error")
+        return redirect("/pagos")
+    payment.billable = not payment.billable
+    record(db, obj=payment, action="update", changed_by=partner.username,
+           summary=f"Pago #{payment.id} {'visible para' if payment.billable else 'oculto para'} la contadora")
+    db.commit()
+    flash(request, "Ahora la contadora lo ve." if payment.billable
+          else "Ahora la contadora no lo ve.")
+    return redirect(f"/pagos/{payment.id}")
+
+
 # --------------------------------------------------------------- editar solo aportes
 
 
