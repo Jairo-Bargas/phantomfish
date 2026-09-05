@@ -17,6 +17,7 @@ from app.money import ZERO, dsum
 from app.models import Partner, Sale, SaleItem
 from app.services.documents import attach_files, list_documents
 from app.services.payments import parse_date
+from app.services.vat import DEFAULT_VAT_RATE, parse_rate, vat_from_total
 from app.web import flash, redirect, render
 
 router = APIRouter(prefix="/ventas")
@@ -40,6 +41,22 @@ def _num(value: str, field: str, quant: Decimal = Decimal("0.01")) -> Decimal:
         return Decimal(v).quantize(quant)
     except (InvalidOperation, ValueError):
         raise ValueError(f"{field}: número inválido ({value!r}).") from None
+
+
+def _apply_vat(sale: Sale, form: dict) -> None:
+    """Fija sale.vat_amount / vat_rate según el form y el total actual."""
+    if not form.get("vat_discrimina"):
+        sale.vat_amount = None
+        sale.vat_rate = None
+        return
+    rate_pct = parse_rate(form.get("vat_rate")) or DEFAULT_VAT_RATE
+    manual = _num(form.get("vat_amount_manual", ""), "IVA")
+    total = sale.total_ars
+    vat = manual if manual > ZERO else vat_from_total(total, rate_pct)
+    if vat > total:
+        raise ValueError("El IVA no puede ser mayor que el total de la venta.")
+    sale.vat_amount = vat
+    sale.vat_rate = rate_pct
 
 
 def _parse_items(form: dict) -> list[dict]:
@@ -124,6 +141,11 @@ async def create_sale(
 
     for it in items:
         sale.items.append(SaleItem(**it))
+    try:
+        _apply_vat(sale, form)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return _rerender(request, partner, form, status_code=400)
     db.add(sale)
     db.flush()
     saved, errors = await attach_files(
@@ -223,6 +245,9 @@ async def edit_sale(
                 "payment_method": sale.payment_method,
                 "status": sale.status,
                 "invoice_number": sale.invoice_number or "",
+                "vat_discrimina": "1" if sale.vat_amount is not None else "",
+                "vat_rate": (f"{sale.vat_rate.normalize():f}" if sale.vat_rate is not None else "21"),
+                "vat_amount_manual": (f"{sale.vat_amount:.2f}" if sale.vat_amount is not None else ""),
                 "notes": sale.notes or "",
             },
             "items": [
@@ -267,6 +292,11 @@ async def update_sale(
     sale.items.clear()
     for it in items:
         sale.items.append(SaleItem(**it))
+    try:
+        _apply_vat(sale, form)  # usa sale.total_ars con los ítems nuevos
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return _rerender(request, partner, form, status_code=400, sale=sale)
     record(db, obj=sale, action="update", changed_by=partner.username,
            summary=f"Edición de venta #{sale.id}", old=before)
     db.commit()

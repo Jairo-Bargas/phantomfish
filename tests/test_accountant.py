@@ -167,7 +167,7 @@ def test_accountant_dashboard_shows_payments_and_sales(auth_client, accountant_c
             "category": "otro", "status": "pagado", "currency_charged": "ARS",
             "amount_original": "50000", "exchange_rate": "1000",
             "exchange_rate_type": "oficial", "split_mode": "auto",
-            "invoice_number": "A-0001-00009999",
+            "invoice_number": "A-0001-00009999", "billable": "1",
         },
         follow_redirects=True,
     )
@@ -214,22 +214,35 @@ def test_accountant_can_view_payment_doc_but_not_purchase_doc(auth_client, accou
             "concept": "Pago con comprobante", "date": "2026-09-04", "category": "otro",
             "status": "pagado", "currency_charged": "ARS", "amount_original": "1000",
             "exchange_rate": "1000", "exchange_rate_type": "oficial", "split_mode": "auto",
+            "billable": "1",
         },
         follow_redirects=True,
     )
     pid = re.search(
         r"/pagos/(\d+)", auth_client.get("/pagos", params={"q": "Pago con comprobante"}).text
     ).group(1)
+    # comprobante marcado como factura -> lo ve la contadora
     auth_client.post(
         f"/comprobantes/payment/{pid}",
+        data={"kind": "factura"},
         files=[("comprobantes", ("recibo.pdf", b"%PDF-1.4 contenido de prueba", "application/pdf"))],
         follow_redirects=True,
     )
-    pay_doc_id = re.search(r"/comprobantes/(\d+)/ver", auth_client.get(f"/pagos/{pid}").text).group(1)
+    pay_doc_id = re.search(
+        r"/comprobantes/(\d+)/ver", auth_client.get(f"/pagos/{pid}").text
+    ).group(1)
 
     r = accountant_client.get(f"/comprobantes/{pay_doc_id}/ver")
     assert r.status_code == 200
     assert r.headers["content-type"] == "application/pdf"
+
+    # el mismo comprobante como "otro" (no factura) -> la contadora no lo puede ver
+    auth_client.post(f"/comprobantes/{pay_doc_id}/tipo", data={"kind": "otro"}, follow_redirects=True)
+    r = accountant_client.get(f"/comprobantes/{pay_doc_id}/ver", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/contadora"
+    # se vuelve a marcar como factura para no dejar estado raro
+    auth_client.post(f"/comprobantes/{pay_doc_id}/tipo", data={"kind": "factura"}, follow_redirects=True)
 
     r = auth_client.post(
         "/compras",

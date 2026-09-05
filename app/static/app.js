@@ -145,6 +145,46 @@
     splitAuto.forEach((el) => el.addEventListener("change", refreshContribControls));
     contribInputs.forEach((el) => el.addEventListener("input", updateControl));
 
+    /* ---- tipo de gasto: personal esconde el reparto 35/65 ---- */
+    const expenseType = $("[name=expense_type]", form);
+    const paidByField = $("#paid-by-field", form);
+    const aportesCard = $("#aportes-card", form);
+    function syncExpenseType() {
+      const personal = expenseType && expenseType.value === "personal";
+      if (paidByField) paidByField.hidden = !personal;
+      if (aportesCard) aportesCard.hidden = personal;
+    }
+    if (expenseType) {
+      expenseType.addEventListener("change", syncExpenseType);
+      syncExpenseType();
+    }
+
+    /* ---- IVA discriminado: mostrar caja + calcular neto/IVA ---- */
+    const vatChk = $("#vat-discrimina", form);
+    const vatBox = $("#vat-box", form);
+    const vatRate = $("#vat_rate", form);
+    const vatManual = $("#vat_amount_manual", form);
+    const vatNeto = $("#vat-neto", form);
+    const vatIva = $("#vat-iva", form);
+    function syncVat() {
+      const on = vatChk && vatChk.checked;
+      if (vatBox) vatBox.hidden = !on;
+      if (!on) return;
+      const total = totalArs();
+      const manual = vatManual ? parseNum(vatManual.value) : 0;
+      const r = vatRate ? parseNum(vatRate.value) : 21;
+      let iva = manual > 0 ? manual : total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
+      if (iva > total) iva = total;
+      if (vatIva) vatIva.textContent = fmtARS(iva);
+      if (vatNeto) vatNeto.textContent = fmtARS(round2(total - iva));
+    }
+    [vatChk, vatRate, vatManual, amount, rate].forEach(
+      (el) => el && el.addEventListener("input", syncVat)
+    );
+    if (vatChk) vatChk.addEventListener("change", syncVat);
+    currencyRadios.forEach((el) => el.addEventListener("change", syncVat));
+    syncVat();
+
     /* traer cotización */
     const fetchBtn = $("#fetch-rate");
     if (fetchBtn) {
@@ -238,6 +278,46 @@
     renumber();
     recalc();
     if ($$(".item-row", box).length === 0 && addBtn) addBtn.click();
+  }
+
+  /* ---------- venta: IVA discriminado ---------- */
+  const saleForm = $("#sale-form");
+  if (saleForm) initSaleVat(saleForm);
+
+  function initSaleVat(form) {
+    const chk = $("#vat-discrimina", form);
+    if (!chk) return;
+    const box = $("#vat-box", form);
+    const rateSel = $("#vat_rate", form);
+    const manual = $("#vat_amount_manual", form);
+    const netoEl = $("#vat-neto", form);
+    const ivaEl = $("#vat-iva", form);
+    const itemsBox = $("#items", form);
+
+    function saleTotal() {
+      let t = 0;
+      $$(".item-row", itemsBox).forEach((row) => {
+        const q = parseNum($("[data-name=item_qty]", row).value);
+        const p = parseNum($("[data-name=item_price]", row).value);
+        t += round2(q * p);
+      });
+      return round2(t);
+    }
+    function sync() {
+      if (box) box.hidden = !chk.checked;
+      if (!chk.checked) return;
+      const total = saleTotal();
+      const m = manual ? parseNum(manual.value) : 0;
+      const r = rateSel ? parseNum(rateSel.value) : 21;
+      let iva = m > 0 ? m : total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
+      if (iva > total) iva = total;
+      if (ivaEl) ivaEl.textContent = fmtARS(iva);
+      if (netoEl) netoEl.textContent = fmtARS(round2(total - iva));
+    }
+    [chk, rateSel, manual].forEach((el) => el && el.addEventListener("input", sync));
+    chk.addEventListener("change", sync);
+    if (itemsBox) itemsBox.addEventListener("input", sync);
+    sync();
   }
 
   /* ---------- service worker (instalable) ---------- */

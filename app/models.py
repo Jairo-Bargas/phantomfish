@@ -140,6 +140,18 @@ class Payment(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pagado")
     order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
     invoice_number: Mapped[str | None] = mapped_column(String(80))  # factura recibida (contadora)
+
+    # Lo ve la contadora (facturas recibidas). Un pago no facturable no aparece
+    # en su panel ni con sus comprobantes.
+    billable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # "negocio" (reparto 35/65, entra en costos) o "personal" (gasto de un socio,
+    # 100% suyo, no entra en el reparto ni en los totales de costos; su IVA sí suma).
+    expense_type: Mapped[str] = mapped_column(String(12), nullable=False, default="negocio")
+    paid_by_partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"))
+    # IVA discriminado (Factura A). NULL = no discrimina. Congelados al guardar.
+    vat_amount: Mapped[Decimal | None] = mapped_column(Money())
+    vat_rate: Mapped[Decimal | None] = mapped_column(Rate())
+
     notes: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str | None] = mapped_column(String(60))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -148,6 +160,7 @@ class Payment(Base):
     )
 
     order: Mapped["Order | None"] = relationship(back_populates="payments")
+    paid_by: Mapped["Partner | None"] = relationship(foreign_keys=[paid_by_partner_id])
     contributions: Mapped[list["PaymentContribution"]] = relationship(
         back_populates="payment",
         cascade="all, delete-orphan",
@@ -173,6 +186,17 @@ class Payment(Base):
     @property
     def control_ok(self) -> bool:
         return abs(self.control_difference) <= Decimal("0.01")
+
+    @property
+    def is_personal(self) -> bool:
+        return self.expense_type == "personal"
+
+    @property
+    def net_amount(self) -> Decimal | None:
+        """Neto = total - IVA (solo si discrimina IVA)."""
+        if self.vat_amount is None:
+            return None
+        return money(Decimal(str(self.amount_ars)) - Decimal(str(self.vat_amount)))
 
 
 class PaymentContribution(Base):
@@ -288,6 +312,9 @@ class Sale(Base):
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False, default="transferencia")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="cobrado")
     invoice_number: Mapped[str | None] = mapped_column(String(80))  # factura emitida (contadora)
+    # IVA discriminado (Factura A emitida = débito fiscal). NULL = no discrimina.
+    vat_amount: Mapped[Decimal | None] = mapped_column(Money())
+    vat_rate: Mapped[Decimal | None] = mapped_column(Rate())
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -303,6 +330,13 @@ class Sale(Base):
     @property
     def total_ars(self) -> Decimal:
         return dsum(i.total_ars for i in self.items)
+
+    @property
+    def net_amount(self) -> Decimal | None:
+        """Neto = total - IVA (solo si discrimina IVA)."""
+        if self.vat_amount is None:
+            return None
+        return money(Decimal(str(self.total_ars)) - Decimal(str(self.vat_amount)))
 
 
 class SaleItem(Base):
@@ -365,6 +399,8 @@ class Document(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_type: Mapped[str] = mapped_column(String(20), nullable=False)  # payment|purchase|sale|settlement
     entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Solo se usa en pagos: "factura" (la ve la contadora) u "otro" (comprobante interno).
+    kind: Mapped[str] = mapped_column(String(12), nullable=False, default="otro")
     file_reference: Mapped[str] = mapped_column(String(400), nullable=False)  # ruta relativa
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[str | None] = mapped_column(String(120))

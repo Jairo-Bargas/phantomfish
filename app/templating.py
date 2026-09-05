@@ -102,8 +102,11 @@ templates.env.filters["qty"] = qty_fmt
 templates.env.filters["pct"] = pct_fmt
 templates.env.filters["fecha"] = date_fmt
 templates.env.filters["fechahora"] = datetime_fmt
+from app.services.vat import VAT_RATES  # noqa: E402
+
 templates.env.globals["label_for"] = label_for
 templates.env.globals["OPTIONS"] = _ALL
+templates.env.globals["VAT_RATES"] = VAT_RATES
 templates.env.globals["APP_NAME"] = settings.app_name
 templates.env.globals["ASSET_V"] = ASSET_VERSION
 templates.env.globals["today"] = lambda: dt.date.today().isoformat()

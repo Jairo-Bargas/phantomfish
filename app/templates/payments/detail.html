@@ -22,6 +22,11 @@
     · <span class="badge">{{ label_for('payment_status', payment.status) }}</span>
     {% if payment.order %}· <a href="/pedidos/{{ payment.order.id }}">{{ payment.order.display_name }}</a>{% endif %}
     {% if payment.invoice_number %}· Factura {{ payment.invoice_number }}{% endif %}
+    {% if payment.is_personal %}
+      · <span class="badge badge-warn">Personal{% if payment.paid_by %} · {{ payment.paid_by.name }}{% endif %}</span>
+    {% endif %}
+    {% if payment.billable %}<span class="badge badge-info">La ve la contadora</span>
+    {% else %}<span class="badge">No facturable</span>{% endif %}
   </div>
   <div class="tiles">
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ payment.amount_ars | ars }}</div></div>
@@ -35,10 +40,22 @@
     <div class="tile"><div class="k">Cotización</div><div class="v">{{ payment.exchange_rate | rate }}</div>
       <div class="k">{{ label_for('rate_type', payment.exchange_rate_type) }}</div></div>
     {% endif %}
+    {% if payment.vat_amount is not none %}
+    <div class="tile"><div class="k">Neto</div><div class="v">{{ payment.net_amount | ars }}</div></div>
+    <div class="tile"><div class="k">IVA{% if payment.vat_rate is not none %} ({{ payment.vat_rate | pct }}%){% endif %}</div>
+      <div class="v">{{ payment.vat_amount | ars }}</div></div>
+    {% endif %}
   </div>
   {% if payment.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ payment.notes }}</p>{% endif %}
 </div>
 
+{% if payment.is_personal %}
+<div class="card">
+  <p class="small muted">Gasto personal{% if payment.paid_by %} de <strong>{{ payment.paid_by.name }}</strong>{% endif %} —
+    no entra en el reparto 35/65 ni en los totales de costos del negocio.
+    {% if payment.vat_amount is not none %}Su IVA sí suma como crédito fiscal.{% endif %}</p>
+</div>
+{% else %}
 <div class="card">
   <h2>Control</h2>
   <div class="control {{ 'control-ok' if payment.control_ok else 'control-bad' }}">
@@ -84,29 +101,68 @@
     <button class="btn btn-primary btn-sm btn-block" type="submit">Guardar aportes</button>
   </form>
 </div>
+{% endif %}
+
+{% set facturas = documents | selectattr('kind', 'equalto', 'factura') | list %}
+{% set otros = documents | rejectattr('kind', 'equalto', 'factura') | list %}
 
 <div class="card">
-  <div class="section-head"><h2>Comprobantes</h2></div>
-  {% if documents %}
+  <div class="section-head"><h2>Facturas y comprobantes de pago</h2></div>
+  <p class="hint">Esto es lo que ve la contadora.</p>
+  {% if facturas %}
   <div class="stack">
-    {% for d in documents %}
+    {% for d in facturas %}
     <div class="doc">
       <span>{{ '📄' if d.content_type == 'application/pdf' else '🖼️' }}</span>
       <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">{{ d.original_filename }}</a>
-      <form method="post" action="/comprobantes/{{ d.id }}/eliminar"
-            data-confirm="¿Eliminar este comprobante?">
+      <form method="post" action="/comprobantes/{{ d.id }}/tipo">
+        <input type="hidden" name="kind" value="otro">
+        <button class="btn btn-ghost btn-sm" type="submit" title="Sacar de facturas">→ Otros</button>
+      </form>
+      <form method="post" action="/comprobantes/{{ d.id }}/eliminar" data-confirm="¿Eliminar este comprobante?">
         <button class="btn btn-danger btn-sm" type="submit">✕</button>
       </form>
     </div>
     {% endfor %}
   </div>
   {% else %}
-    <p class="muted small">Sin comprobantes todavía.</p>
+    <p class="muted small">Sin facturas cargadas.</p>
   {% endif %}
   <form method="post" action="/comprobantes/payment/{{ payment.id }}" enctype="multipart/form-data"
         class="stack" style="margin-top:12px">
+    <input type="hidden" name="kind" value="factura">
     <input name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf" required>
-    <button class="btn btn-ghost btn-sm btn-block" type="submit">Subir comprobante</button>
+    <button class="btn btn-ghost btn-sm btn-block" type="submit">Subir factura / comprobante de pago</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="section-head"><h2>Otros comprobantes</h2></div>
+  <p class="hint">Arribo, aduana, notas internas. La contadora no los ve.</p>
+  {% if otros %}
+  <div class="stack">
+    {% for d in otros %}
+    <div class="doc">
+      <span>{{ '📄' if d.content_type == 'application/pdf' else '🖼️' }}</span>
+      <a href="/comprobantes/{{ d.id }}/ver" target="_blank" rel="noopener">{{ d.original_filename }}</a>
+      <form method="post" action="/comprobantes/{{ d.id }}/tipo">
+        <input type="hidden" name="kind" value="factura">
+        <button class="btn btn-ghost btn-sm" type="submit" title="Marcar como factura">★ Es factura</button>
+      </form>
+      <form method="post" action="/comprobantes/{{ d.id }}/eliminar" data-confirm="¿Eliminar este comprobante?">
+        <button class="btn btn-danger btn-sm" type="submit">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="muted small">Sin otros comprobantes.</p>
+  {% endif %}
+  <form method="post" action="/comprobantes/payment/{{ payment.id }}" enctype="multipart/form-data"
+        class="stack" style="margin-top:12px">
+    <input type="hidden" name="kind" value="otro">
+    <input name="comprobantes" type="file" multiple accept=".pdf,image/*,application/pdf" required>
+    <button class="btn btn-ghost btn-sm btn-block" type="submit">Subir otro comprobante</button>
   </form>
 </div>
 

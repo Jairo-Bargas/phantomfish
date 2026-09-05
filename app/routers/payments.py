@@ -28,6 +28,7 @@ from app.services.payments import (
     parse_date,
 )
 from app.services.periods import month_bounds, month_label, month_options
+from app.services.vat import DEFAULT_VAT_RATE, parse_rate, vat_from_total
 from app.config import get_settings
 from app.web import flash, redirect, render
 
@@ -44,6 +45,7 @@ def _load_payment(db: Session, payment_id: int) -> Payment | None:
             selectinload(Payment.contributions).selectinload(PaymentContribution.partner),
             selectinload(Payment.purchases),
             selectinload(Payment.order),
+            selectinload(Payment.paid_by),
         )
         .where(Payment.id == payment_id)
     )
@@ -62,6 +64,27 @@ def _parse_amount(value: str, field: str) -> Decimal:
         return money(v)
     except (InvalidOperation, ValueError):
         raise ValueError(f"{field}: número inválido ({value!r}).") from None
+
+
+def _parse_amount_opt(value: str | None, field: str) -> Decimal | None:
+    """Como _parse_amount pero devuelve None si viene vacío."""
+    if value is None or str(value).strip() == "":
+        return None
+    return _parse_amount(value, field)
+
+
+def _vat_from_form(form: dict, total_ars: Decimal) -> tuple[Decimal | None, Decimal | None]:
+    """(vat_amount, vat_rate) a partir del form. (None, None) si no discrimina IVA."""
+    if not form.get("vat_discrimina"):
+        return None, None
+    rate_pct = parse_rate(form.get("vat_rate")) or DEFAULT_VAT_RATE
+    manual = _parse_amount_opt(form.get("vat_amount_manual"), "IVA")
+    vat_amount = manual if manual is not None else vat_from_total(total_ars, rate_pct)
+    if vat_amount < ZERO:
+        raise ValueError("El IVA no puede ser negativo.")
+    if vat_amount > money(total_ars):
+        raise ValueError("El IVA no puede ser mayor que el total.")
+    return vat_amount, rate_pct
 
 
 def _contribution_inputs(form: dict, partners: list[Partner]) -> dict[int, Decimal] | None:
@@ -94,6 +117,7 @@ async def list_payments(
     hasta: str | None = None,
     mes: str | None = None,
     pedido: str | None = None,
+    personales: str | None = None,
     partner: Partner = Depends(get_current_partner),
     db: Session = Depends(get_db),
 ):
@@ -137,6 +161,14 @@ async def list_payments(
         else:
             pedido = ""
 
+    # Por defecto la lista muestra solo gastos del negocio; los personales de
+    # cada socio (ej. su combustible) aparecen solo si se piden.
+    personales = (personales or "").strip()
+    if personales == "solo":
+        stmt = stmt.where(Payment.expense_type == "personal")
+    elif personales != "ver":
+        stmt = stmt.where(Payment.expense_type != "personal")
+
     stmt = stmt.order_by(Payment.date.desc(), Payment.id.desc())
     payments = list(db.scalars(stmt))
 
@@ -160,6 +192,7 @@ async def list_payments(
             "months": month_options(mes),
             "pedido": pedido,
             "pedido_label": pedido_label,
+            "personales": personales,
             "orders": order_choices(db),
             "filters": {
                 "q": q or "",
@@ -211,6 +244,8 @@ async def new_payment(
             "status": "pagado",
             "category": "importacion",
             "order_id": preselect_order,
+            "billable": "1",
+            "expense_type": "negocio",
         },
         "contributions": {p.id: ZERO for p in partners},
         "pct_by_partner": {str(p.id): str(p.pct_share) for p in partners},
@@ -228,12 +263,13 @@ async def create_payment(
 ):
     form_data = await request.form()
     form = dict(form_data.multi_items())
-    files: list[UploadFile] = form_data.getlist("comprobantes")  # type: ignore
+    files_factura: list[UploadFile] = form_data.getlist("comprobantes_factura")  # type: ignore
+    files_otros: list[UploadFile] = form_data.getlist("comprobantes")  # type: ignore
     partners = active_partners(db)
 
     try:
         payment = _build_payment_from_form(db, form, partner)
-        amounts_by_partner = _resolve_contributions(db, form, partners, payment.amount_ars)
+        amounts_by_partner = _resolve_contributions(db, form, partners, payment)
     except ValueError as exc:
         flash(request, str(exc), "error")
         return _rerender_form(request, db, partner, form, partners, status_code=400)
@@ -243,17 +279,21 @@ async def create_payment(
     db.add(payment)
     db.flush()
 
-    saved, errors = await attach_files(
-        db,
-        files=files,
-        entity_type="payment",
-        entity_id=payment.id,
-        label=payment.concept,
-        on_date=payment.date,
-        uploaded_by=partner.username,
-    )
-    for e in errors:
-        flash(request, e, "error")
+    saved = 0
+    for group, kind in ((files_factura, "factura"), (files_otros, "otro")):
+        n, errors = await attach_files(
+            db,
+            files=group,
+            entity_type="payment",
+            entity_id=payment.id,
+            label=payment.concept,
+            on_date=payment.date,
+            uploaded_by=partner.username,
+            kind=kind,
+        )
+        saved += n
+        for e in errors:
+            flash(request, e, "error")
 
     record(db, obj=payment, action="insert", changed_by=partner.username,
            summary=f"Alta de pago: {payment.concept}")
@@ -302,6 +342,18 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         amount_original=amount_original,
         exchange_rate=exchange_rate,
     )
+
+    expense_type = form.get("expense_type") or "negocio"
+    if expense_type not in {"negocio", "personal"}:
+        raise ValueError("Tipo de gasto inválido.")
+    paid_by_id = None
+    if expense_type == "personal":
+        paid_by_id = _resolve_partner_id(db, form.get("paid_by_partner_id"))
+        if paid_by_id is None:
+            raise ValueError("Elegí qué socio pagó este gasto personal.")
+
+    vat_amount, vat_rate = _vat_from_form(form, amounts.amount_ars)
+
     return Payment(
         date=parse_date(form.get("date")),
         concept=concept,
@@ -315,13 +367,31 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         status=status,
         order_id=_resolve_order_id(db, form.get("order_id")),
         invoice_number=(form.get("invoice_number") or "").strip() or None,
+        billable=bool(form.get("billable")),
+        expense_type=expense_type,
+        paid_by_partner_id=paid_by_id,
+        vat_amount=vat_amount,
+        vat_rate=vat_rate,
         notes=(form.get("notes") or "").strip() or None,
     )
 
 
+def _resolve_partner_id(db: Session, raw) -> int | None:
+    try:
+        pid = int(raw)
+    except (ValueError, TypeError):
+        return None
+    p = db.get(Partner, pid)
+    return pid if p is not None else None
+
+
 def _resolve_contributions(
-    db: Session, form: dict, partners: list[Partner], total_ars: Decimal
+    db: Session, form: dict, partners: list[Partner], payment: Payment
 ) -> dict[int, Decimal]:
+    total_ars = payment.amount_ars
+    if payment.expense_type == "personal":
+        # 100% al socio que lo pagó; no participa del reparto 35/65.
+        return {payment.paid_by_partner_id: money(total_ars)}
     mode = form.get("split_mode", "auto")
     if mode == "auto":
         return default_split(db, total_ars)
@@ -409,6 +479,12 @@ async def edit_payment(
             "exchange_rate_type": payment.exchange_rate_type,
             "order_id": str(payment.order_id or ""),
             "invoice_number": payment.invoice_number or "",
+            "billable": "1" if payment.billable else "",
+            "expense_type": payment.expense_type,
+            "paid_by_partner_id": str(payment.paid_by_partner_id or ""),
+            "vat_discrimina": "1" if payment.vat_amount is not None else "",
+            "vat_rate": (f"{payment.vat_rate.normalize():f}" if payment.vat_rate is not None else "21"),
+            "vat_amount_manual": (f"{payment.vat_amount:.2f}" if payment.vat_amount is not None else ""),
             "notes": payment.notes or "",
         },
         "contributions": {p.id: contrib.get(p.id, ZERO) for p in partners},
@@ -436,7 +512,7 @@ async def update_payment(
     before = snapshot(payment)
     try:
         new_data = _build_payment_from_form(db, form, partner)
-        amounts_by_partner = _resolve_contributions(db, form, partners, new_data.amount_ars)
+        amounts_by_partner = _resolve_contributions(db, form, partners, new_data)
     except ValueError as exc:
         flash(request, str(exc), "error")
         return _rerender_form(request, db, partner, form, partners, status_code=400, payment=payment)
@@ -444,7 +520,8 @@ async def update_payment(
     for field in (
         "date", "concept", "category", "currency_charged", "amount_original",
         "exchange_rate", "exchange_rate_type", "amount_ars", "amount_usd", "status",
-        "order_id", "invoice_number", "notes",
+        "order_id", "invoice_number", "billable", "expense_type", "paid_by_partner_id",
+        "vat_amount", "vat_rate", "notes",
     ):
         setattr(payment, field, getattr(new_data, field))
     apply_contributions(db, payment, amounts_by_partner)

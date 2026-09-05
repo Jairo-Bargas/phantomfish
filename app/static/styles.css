@@ -231,6 +231,30 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 .pill-toggle label:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
 .pill-toggle-3 label { font-size: .76rem; padding: 9px 3px; }
 
+/* ---------- checkbox row ---------- */
+.check {
+  display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+  font-weight: 500; font-size: .88rem; cursor: pointer; margin-bottom: 13px;
+}
+.check input { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; accent-color: var(--primary); }
+.check span { line-height: 1.35; }
+.check .hint { margin-top: 3px; }
+
+/* ---------- sub-panel (IVA, etc.) ---------- */
+.subpanel {
+  border: 1px dashed var(--border); border-radius: 10px; padding: 12px; margin-bottom: 13px;
+  background: var(--surface-2);
+}
+.subpanel .k { font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; color: var(--text-soft); }
+.subpanel .v { font-weight: 700; font-size: 1rem; }
+.kv-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+
+/* ---------- IVA position ---------- */
+.iva-pos { text-align: center; padding: 12px; border-radius: 12px; font-weight: 700; }
+.iva-pos.favor { background: var(--ok-soft); color: var(--ok); }
+.iva-pos.pagar { background: var(--warn-soft); color: var(--warn); }
+
 @media (min-width: 620px) {
   .tiles { grid-template-columns: repeat(4, 1fr); }
   h1 { font-size: 1.5rem; }

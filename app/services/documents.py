@@ -23,8 +23,12 @@ async def attach_files(
     label: str,
     on_date: dt.date | None,
     uploaded_by: str | None,
+    kind: str = "otro",
 ) -> tuple[int, list[str]]:
-    """Guarda los archivos válidos. Devuelve (cantidad_ok, [errores])."""
+    """Guarda los archivos válidos. Devuelve (cantidad_ok, [errores]).
+
+    ``kind`` solo importa para pagos: "factura" (la ve la contadora) u "otro".
+    """
     saved = 0
     errors: list[str] = []
     for file in files or []:
@@ -46,6 +50,7 @@ async def attach_files(
                 entity_type=entity_type,
                 entity_id=entity_id,
                 uploaded_by=uploaded_by,
+                kind=kind if entity_type == "payment" else "otro",
                 **meta,
             )
         )

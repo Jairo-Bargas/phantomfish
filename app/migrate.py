@@ -20,6 +20,14 @@ _ADD_COLUMNS: list[tuple[str, str, str]] = [
     ("settlements", "payment_id", "INTEGER REFERENCES payments(id) ON DELETE SET NULL"),
     ("payments", "invoice_number", "TEXT"),
     ("sales", "invoice_number", "TEXT"),
+    ("payments", "billable", "INTEGER NOT NULL DEFAULT 1"),
+    ("payments", "expense_type", "TEXT NOT NULL DEFAULT 'negocio'"),
+    ("payments", "paid_by_partner_id", "INTEGER REFERENCES partners(id)"),
+    ("payments", "vat_amount", "TEXT"),
+    ("payments", "vat_rate", "TEXT"),
+    ("sales", "vat_amount", "TEXT"),
+    ("sales", "vat_rate", "TEXT"),
+    ("documents", "kind", "TEXT NOT NULL DEFAULT 'otro'"),
 ]
 
 # Se corren después de agregar columnas, solo si la columna acaba de aparecer.

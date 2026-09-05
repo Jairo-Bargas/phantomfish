@@ -12,9 +12,10 @@ from app.auth import get_current_partner
 from app.database import get_db
 from app.money import ZERO, money
 from app.models import Partner, Payment
-from app.services.periods import month_bounds, month_label, month_options, this_month
+from app.services.periods import month_bounds, month_label, month_options
 from app.services.settlements import list_settlements
 from app.services.summary import build_summary
+from app.services.vat import vat_by_month, vat_totals
 from app.web import render
 
 router = APIRouter()
@@ -36,20 +37,24 @@ async def monthly_report(
     partner: Partner = Depends(get_current_partner),
     db: Session = Depends(get_db),
 ):
+    # Sin filtro por defecto: se ve todo el histórico. El usuario elige el mes.
     use_range = bool(desde or hasta)
-    if not use_range and not mes:
-        mes = this_month()
-
     if use_range:
         date_from, date_to = _date(desde), _date(hasta)
         titulo = "Período personalizado"
-    else:
+    elif mes:
         date_from, date_to = month_bounds(mes)
         titulo = month_label(mes) or "Reporte"
+    else:
+        date_from = date_to = None
+        titulo = "Todo el histórico"
 
     summary = build_summary(db, date_from=date_from, date_to=date_to)
 
-    pay_stmt = select(Payment).options(selectinload(Payment.contributions))
+    # Los gastos personales de un socio no son costo del negocio.
+    pay_stmt = select(Payment).options(selectinload(Payment.contributions)).where(
+        Payment.expense_type != "personal"
+    )
     if date_from:
         pay_stmt = pay_stmt.where(Payment.date >= date_from)
     if date_to:
@@ -99,6 +104,9 @@ async def monthly_report(
             "settlements": settlements,
             "months": month_options(mes),
             "export_qs": export_qs,
+            "vat_period": vat_totals(db, date_from=date_from, date_to=date_to),
+            "vat_total": vat_totals(db),
+            "vat_months": vat_by_month(db, 12),
         },
         db=db,
     )

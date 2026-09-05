@@ -1,0 +1,37 @@
+{# Espera: vat_period, vat_total, vat_months, titulo #}
+<div class="card">
+  <div class="section-head"><h2>IVA</h2></div>
+  <p class="hint">Crédito = IVA de facturas A recibidas (pagos). Débito = IVA de facturas A emitidas (ventas).
+    Positivo = a favor; negativo = a pagar.</p>
+
+  <div class="tiles" style="margin-bottom:12px">
+    <div class="tile"><div class="k">Crédito · {{ titulo }}</div><div class="v">{{ vat_period.credito | ars }}</div></div>
+    <div class="tile"><div class="k">Débito · {{ titulo }}</div><div class="v">{{ vat_period.debito | ars }}</div></div>
+  </div>
+  <div class="iva-pos {{ 'favor' if vat_period.a_favor else 'pagar' }}">
+    {% if vat_period.a_favor %}IVA a favor: {{ vat_period.posicion | ars }}
+    {% else %}IVA a pagar: {{ (-vat_period.posicion) | ars }}{% endif %}
+  </div>
+
+  <p class="small muted" style="margin-top:12px">Acumulado (todo el histórico):
+    crédito {{ vat_total.credito | ars }} · débito {{ vat_total.debito | ars }} ·
+    {% if vat_total.a_favor %}a favor {{ vat_total.posicion | ars }}{% else %}a pagar {{ (-vat_total.posicion) | ars }}{% endif %}.</p>
+
+  {% if vat_months and (vat_total.credito or vat_total.debito) %}
+  <div class="table-wrap" style="margin-top:10px">
+    <table class="data">
+      <thead><tr><th>Mes</th><th class="num">Crédito</th><th class="num">Débito</th><th class="num">Posición</th></tr></thead>
+      <tbody>
+        {% for m in vat_months %}
+        <tr>
+          <td>{{ m.label }}</td>
+          <td class="num">{{ m.credito | ars }}</td>
+          <td class="num">{{ m.debito | ars }}</td>
+          <td class="num">{{ m.posicion | ars }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>

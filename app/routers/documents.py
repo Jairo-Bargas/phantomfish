@@ -27,6 +27,89 @@ _BACK = {
     "settlement": "/socios/movimientos",
 }
 
+_ACCOUNTANT_ENTITY_TYPES = {"payment", "sale"}
+
+
+def _accountant_can_see(db: Session, doc: Document) -> bool:
+    """La contadora ve comprobantes de ventas, y de pagos solo si son 'factura'
+    de un pago facturable."""
+    if doc.entity_type == "sale":
+        return True
+    if doc.entity_type != "payment":
+        return False
+    if doc.kind != "factura":
+        return False
+    pay = db.get(Payment, doc.entity_id)
+    return bool(pay and pay.billable)
+
+
+# --- rutas por id de documento (van antes de la genérica /{entity_type}/{entity_id}) ---
+
+
+@router.get("/{doc_id}/ver")
+async def view_document(
+    doc_id: int,
+    partner: Partner | None = Depends(get_current_partner_optional),
+    accountant: Accountant | None = Depends(get_current_accountant_optional),
+    db: Session = Depends(get_db),
+):
+    if partner is None and accountant is None:
+        return redirect("/login")
+    doc = db.get(Document, doc_id)
+    if not doc:
+        return redirect("/")
+    if partner is None and not _accountant_can_see(db, doc):
+        return redirect("/contadora")
+    path = absolute_path(doc.file_reference)
+    if not path.exists():
+        return redirect("/")
+    return FileResponse(
+        path,
+        media_type=doc.content_type or "application/octet-stream",
+        filename=doc.original_filename,
+        content_disposition_type="inline",
+    )
+
+
+@router.post("/{doc_id}/tipo")
+async def set_document_kind(
+    doc_id: int,
+    request: Request,
+    partner: Partner = Depends(get_current_partner),
+    db: Session = Depends(get_db),
+):
+    """Marca/desmarca un comprobante de pago como 'factura' (lo ve la contadora)."""
+    doc = db.get(Document, doc_id)
+    if not doc:
+        return redirect("/")
+    form = await request.form()
+    if doc.entity_type == "payment":
+        doc.kind = "factura" if (form.get("kind") == "factura") else "otro"
+        db.commit()
+        flash(request, "Comprobante actualizado.")
+    return redirect(f"{_BACK.get(doc.entity_type, '/')}/{doc.entity_id}")
+
+
+@router.post("/{doc_id}/eliminar")
+async def delete_document(
+    doc_id: int,
+    request: Request,
+    partner: Partner = Depends(get_current_partner),
+    db: Session = Depends(get_db),
+):
+    doc = db.get(Document, doc_id)
+    if not doc:
+        return redirect("/")
+    entity_type, entity_id = doc.entity_type, doc.entity_id
+    remove_document(db, doc)
+    db.commit()
+    flash(request, "Comprobante eliminado.")
+    back = _BACK.get(entity_type, "/")
+    return redirect(f"{back}/{entity_id}")
+
+
+# --- subida genérica: /comprobantes/<payment|purchase|sale|settlement>/<id> ---
+
 
 @router.post("/{entity_type}/{entity_id}")
 async def upload(
@@ -46,13 +129,14 @@ async def upload(
 
     form = await request.form()
     files: list[UploadFile] = form.getlist("comprobantes")  # type: ignore
+    kind = "factura" if (form.get("kind") == "factura") else "otro"
     label = getattr(entity, "concept", None) or getattr(entity, "supplier", None) or (
         getattr(entity, "customer", None) or entity_type
     )
     on_date = getattr(entity, "date", dt.date.today())
     saved, errors = await attach_files(
         db, files=files, entity_type=entity_type, entity_id=entity_id,
-        label=label, on_date=on_date, uploaded_by=partner.username,
+        label=label, on_date=on_date, uploaded_by=partner.username, kind=kind,
     )
     for e in errors:
         flash(request, e, "error")
@@ -62,49 +146,3 @@ async def upload(
         db.commit()
         flash(request, f"{saved} comprobante/s subido/s.")
     return redirect(f"{_BACK[entity_type]}/{entity_id}")
-
-
-_ACCOUNTANT_ENTITY_TYPES = {"payment", "sale"}
-
-
-@router.get("/{doc_id}/ver")
-async def view_document(
-    doc_id: int,
-    partner: Partner | None = Depends(get_current_partner_optional),
-    accountant: Accountant | None = Depends(get_current_accountant_optional),
-    db: Session = Depends(get_db),
-):
-    if partner is None and accountant is None:
-        return redirect("/login")
-    doc = db.get(Document, doc_id)
-    if not doc:
-        return redirect("/")
-    if partner is None and doc.entity_type not in _ACCOUNTANT_ENTITY_TYPES:
-        return redirect("/contadora")
-    path = absolute_path(doc.file_reference)
-    if not path.exists():
-        return redirect("/")
-    return FileResponse(
-        path,
-        media_type=doc.content_type or "application/octet-stream",
-        filename=doc.original_filename,
-        content_disposition_type="inline",
-    )
-
-
-@router.post("/{doc_id}/eliminar")
-async def delete_document(
-    doc_id: int,
-    request: Request,
-    partner: Partner = Depends(get_current_partner),
-    db: Session = Depends(get_db),
-):
-    doc = db.get(Document, doc_id)
-    if not doc:
-        return redirect("/")
-    entity_type, entity_id = doc.entity_type, doc.entity_id
-    remove_document(db, doc)
-    db.commit()
-    flash(request, "Comprobante eliminado.")
-    back = _BACK.get(entity_type, "/")
-    return redirect(f"{back}/{entity_id}")

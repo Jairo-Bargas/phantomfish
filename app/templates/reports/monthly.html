@@ -10,6 +10,7 @@
   <div class="field" style="margin-bottom:8px">
     <label for="mes">Mes</label>
     <select id="mes" name="mes" onchange="this.form.submit()">
+      <option value="" {{ 'selected' if not mes }}>Todo el histórico</option>
       {% for code, label in months %}
         <option value="{{ code }}" {{ 'selected' if mes == code }}>{{ label }}</option>
       {% endfor %}
@@ -35,6 +36,8 @@
     <div class="v {{ 'neg' if summary.net_result_ars < 0 else 'pos' }}">{{ summary.net_result_ars | ars }}</div></div>
   <div class="tile"><div class="k">Pagos en el período</div><div class="v">{{ summary.payments_count }}</div></div>
 </div>
+
+{% include "partials/_vat_panel.html" %}
 
 <div class="card">
   <h2>Importación vs. operativos</h2>

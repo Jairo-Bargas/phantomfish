@@ -78,10 +78,15 @@ def build_summary(
         for p in partners
     }
 
+    # Los gastos personales de un socio (ej. su combustible) no son costo del
+    # negocio ni entran en el reparto 35/65.
     pay_stmt = (
         select(Payment)
         .options(selectinload(Payment.contributions))
-        .where(*_between(Payment.date, date_from, date_to))
+        .where(
+            Payment.expense_type != "personal",
+            *_between(Payment.date, date_from, date_to),
+        )
         .order_by(Payment.date, Payment.id)
     )
     payments = list(db.scalars(pay_stmt))

@@ -19,10 +19,10 @@ from app.auth import (
     verify_password,
 )
 from app.database import get_db
-from app.models import Accountant, Payment, Sale
+from app.models import Accountant, Document, Payment, Sale
 from app.money import dsum
-from app.services.documents import list_documents
-from app.services.periods import month_bounds, month_label, month_options, this_month
+from app.services.periods import month_bounds, month_label, month_options
+from app.services.vat import vat_by_month, vat_totals
 from app.web import flash, redirect, render
 
 router = APIRouter(prefix="/contadora")
@@ -111,17 +111,23 @@ async def dashboard(
     if not acc:
         return redirect("/contadora/login")
 
+    # Sin filtro por defecto: se ve todo. La contadora acota si quiere.
     use_range = bool(desde or hasta)
-    if not use_range:
-        mes = mes or this_month()
-        date_from, date_to = month_bounds(mes)
-        titulo = month_label(mes)
-    else:
+    if use_range:
         date_from = dt.date.fromisoformat(desde) if desde else None
         date_to = dt.date.fromisoformat(hasta) if hasta else None
         titulo = "Período elegido"
+    elif mes:
+        date_from, date_to = month_bounds(mes)
+        titulo = month_label(mes)
+    else:
+        date_from = date_to = None
+        titulo = "Todo"
 
-    pay_stmt = select(Payment).options(selectinload(Payment.order))
+    # La contadora solo ve pagos facturables.
+    pay_stmt = select(Payment).options(selectinload(Payment.order)).where(
+        Payment.billable.is_(True)
+    )
     if date_from:
         pay_stmt = pay_stmt.where(Payment.date >= date_from)
     if date_to:
@@ -135,8 +141,31 @@ async def dashboard(
         sale_stmt = sale_stmt.where(Sale.date <= date_to)
     sales = list(db.scalars(sale_stmt.order_by(Sale.date, Sale.id)))
 
-    pay_docs = {p.id: list_documents(db, "payment", p.id) for p in payments}
-    sale_docs = {s.id: list_documents(db, "sale", s.id) for s in sales}
+    # De los pagos solo mostramos comprobantes marcados como "factura".
+    def _pay_facturas(pid: int) -> list[Document]:
+        return list(
+            db.scalars(
+                select(Document)
+                .where(
+                    Document.entity_type == "payment",
+                    Document.entity_id == pid,
+                    Document.kind == "factura",
+                )
+                .order_by(Document.id)
+            )
+        )
+
+    def _sale_docs(sid: int) -> list[Document]:
+        return list(
+            db.scalars(
+                select(Document)
+                .where(Document.entity_type == "sale", Document.entity_id == sid)
+                .order_by(Document.id)
+            )
+        )
+
+    pay_docs = {p.id: _pay_facturas(p.id) for p in payments}
+    sale_docs = {s.id: _sale_docs(s.id) for s in sales}
 
     return render(
         request,
@@ -155,6 +184,9 @@ async def dashboard(
             "sale_docs": sale_docs,
             "total_pagos": dsum(p.amount_ars for p in payments),
             "total_ventas": dsum(s.total_ars for s in sales),
+            "vat_period": vat_totals(db, date_from=date_from, date_to=date_to),
+            "vat_total": vat_totals(db),
+            "vat_months": vat_by_month(db, 12),
         },
         db=db,
     )

@@ -6,7 +6,7 @@
   <a class="btn btn-ghost btn-sm" href="{{ '/ventas/' ~ sale.id if sale else '/ventas' }}">Cancelar</a>
 </div>
 
-<form method="post" action="{{ '/ventas/' ~ sale.id if sale else '/ventas' }}"
+<form id="sale-form" method="post" action="{{ '/ventas/' ~ sale.id if sale else '/ventas' }}"
       enctype="multipart/form-data" class="stack">
 
   <div class="card">
@@ -96,6 +96,38 @@
       </template>
     </div>
     <button type="button" id="add-item" class="btn btn-ghost btn-sm btn-block">+ Agregar producto</button>
+  </div>
+
+  <div class="card">
+    <h2>IVA (opcional)</h2>
+    <label class="check">
+      <input type="checkbox" id="vat-discrimina" name="vat_discrimina" value="1"
+             {{ 'checked' if form.vat_discrimina }}>
+      <span>Esta venta lleva factura A (discrimina IVA)
+        <div class="hint">El IVA cuenta como débito fiscal en el panel de IVA.</div>
+      </span>
+    </label>
+    <div id="vat-box" hidden>
+      <div class="grid-2">
+        <div class="field">
+          <label for="vat_rate">Alícuota</label>
+          <select id="vat_rate" name="vat_rate">
+            {% for code, label in VAT_RATES %}
+              <option value="{{ code }}" {{ 'selected' if (form.vat_rate or '21') == code }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="vat_amount_manual">IVA a mano (opcional)</label>
+          <input id="vat_amount_manual" name="vat_amount_manual" inputmode="decimal"
+                 value="{{ form.vat_amount_manual or '' }}" placeholder="lo calcula solo">
+        </div>
+      </div>
+      <div class="subpanel">
+        <div class="kv-row"><span class="k">Neto</span><span class="v" id="vat-neto">—</span></div>
+        <div class="kv-row"><span class="k">IVA</span><span class="v" id="vat-iva">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">

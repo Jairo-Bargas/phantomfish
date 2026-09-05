@@ -29,6 +29,14 @@
       </select>
     </div>
   </div>
+  <div class="field" style="margin-top:10px;margin-bottom:0">
+    <label for="pers-sel">Gastos personales</label>
+    <select id="pers-sel" name="personales" onchange="this.form.submit()">
+      <option value="" {{ 'selected' if not personales }}>Solo gastos del negocio</option>
+      <option value="ver" {{ 'selected' if personales == 'ver' }}>Incluir los personales</option>
+      <option value="solo" {{ 'selected' if personales == 'solo' }}>Solo los personales</option>
+    </select>
+  </div>
 
   <details style="margin-top:10px" {{ 'open' if filters.q or filters.categoria or filters.estado }}>
     <summary class="small" style="cursor:pointer">Más filtros (categoría, estado, fechas)</summary>
@@ -91,6 +99,7 @@
         {{ p.date | fecha }}
         · {{ cat_label(p.category) }}
         {% if p.order %}· <span class="badge badge-info">Pedido N°{{ p.order.number }}</span>{% endif %}
+        {% if p.is_personal %}· <span class="badge badge-warn">Personal</span>{% endif %}
         · <span class="badge">{{ label_for('payment_status', p.status) }}</span>
         {% if p.currency_charged == 'USD' %}· {{ p.amount_usd | usd }}{% endif %}
       </div>

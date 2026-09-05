@@ -17,6 +17,7 @@ from app.money import ZERO, money
 from app.models import Partner, Payment, Purchase, Sale, Settlement
 from app.services.categories import label_map
 from app.services.summary import build_summary
+from app.services.vat import vat_totals
 
 HEADER_FILL = PatternFill("solid", fgColor="1F2937")
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
@@ -98,7 +99,8 @@ def _sheet_pagos(
     ]
     headers += [f"Corresponde {n} (ARS)" for n in p_names]
     headers += [f"Aportó {n} (ARS)" for n in p_names]
-    headers += ["Suma aportes", "Control", "Notas"]
+    headers += ["Suma aportes", "Control", "Notas",
+                "N° Factura", "IVA (ARS)", "Facturable", "Tipo gasto"]
     _header(ws, 3, headers)
 
     payments = list(
@@ -129,6 +131,10 @@ def _sheet_pagos(
             label_for("payment_status", pay.status),
             *corresponde, *aporto, _dec(suma),
             "OK" if ok else "REVISAR", pay.notes or "",
+            pay.invoice_number or "",
+            _dec(pay.vat_amount) if pay.vat_amount is not None else "",
+            "Sí" if pay.billable else "No",
+            "Personal" if pay.expense_type == "personal" else "Negocio",
         ]
         for col, val in enumerate(values, start=1):
             c = ws.cell(row=row, column=col, value=val)
@@ -155,7 +161,8 @@ def _sheet_pagos(
         cell.font = TOTAL_FONT
         cell.number_format = MONEY_FMT
 
-    widths = [10, 12, 34, 15, 8, 14, 12, 10, 15, 15, 11] + [18] * (2 * n) + [15, 10, 30]
+    widths = ([10, 12, 34, 15, 8, 14, 12, 10, 15, 15, 11] + [18] * (2 * n)
+              + [15, 10, 30, 16, 14, 11, 11])
     _autofit(ws, widths)
     ws.freeze_panes = "C4"
 
@@ -214,6 +221,7 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
     headers = [
         "ID", "Fecha", "Cliente / Canal", "Producto", "Cantidad",
         "Precio unit. (ARS)", "Total (ARS)", "Medio de pago", "Estado", "Notas",
+        "N° Factura", "IVA (ARS)",
     ]
     _header(ws, 3, headers)
 
@@ -238,11 +246,13 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
                 label_for("payment_method", sale.payment_method),
                 label_for("sale_status", sale.status),
                 sale.notes or "",
+                sale.invoice_number or "",
+                _dec(sale.vat_amount) if sale.vat_amount is not None else "",
             ]
             for col, val in enumerate(values, start=1):
                 c = ws.cell(row=row, column=col, value=val)
                 c.border = BOX
-                if col in (6, 7) and isinstance(val, float):
+                if col in (6, 7, 12) and isinstance(val, float):
                     c.number_format = MONEY_FMT
             row += 1
 
@@ -250,7 +260,7 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
     tc = ws.cell(row=row + 1, column=7, value=f"=SUM(G4:G{row - 1})")
     tc.font = TOTAL_FONT
     tc.number_format = MONEY_FMT
-    _autofit(ws, [10, 12, 28, 30, 10, 16, 14, 16, 12, 26])
+    _autofit(ws, [10, 12, 28, 30, 10, 16, 14, 16, 12, 26, 16, 14])
     ws.freeze_panes = "C4"
 
 
@@ -307,6 +317,18 @@ def _sheet_resumen(wb: Workbook, db: Session, partners: list[Partner], date_from
         ws.cell(row=r, column=2, value=f"Corresponde a {ps.name} (según %)")
         c = ws.cell(row=r, column=4, value=_dec(ps.profit_share))
         c.number_format = MONEY_FMT
+
+    r += 3
+    v = vat_totals(db, date_from=date_from, date_to=date_to)
+    ws.cell(row=r, column=2, value="IVA DEL PERÍODO").font = TOTAL_FONT
+    for text_label, val in (
+        ("Crédito fiscal (IVA de pagos)", _dec(v.credito)),
+        ("Débito fiscal (IVA de ventas)", _dec(v.debito)),
+        ("Posición (a favor si es positivo)", _dec(v.posicion)),
+    ):
+        r += 1
+        ws.cell(row=r, column=2, value=text_label)
+        ws.cell(row=r, column=4, value=val).number_format = MONEY_FMT
 
     r += 3
     ws.cell(row=r, column=2, value="CONTROL GLOBAL").font = TOTAL_FONT
