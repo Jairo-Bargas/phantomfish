@@ -175,18 +175,33 @@
     const vatSumEl = $("#vat-sum", form);
     const vatOtherEl = $("#vat-other", form);
     const vatTotalEl = $("#vat-total", form);
-    // En edición respetamos lo guardado; en pago nuevo el prellenado manda.
-    let vatTouched = form.dataset.editing === "1";
+    // Último valor que pusimos automáticamente en cada campo. Si el valor actual
+    // del campo no es "" ni ese valor, es que lo editaste vos y no lo tocamos.
+    let autoNeto = "";
+    let autoIva = "";
 
     function vatRatePct() {
-      return vatRate ? parseNum(vatRate.value) : 21;
+      const r = vatRate ? parseNum(vatRate.value) : 21;
+      return r > 0 ? r : 21;
+    }
+    function userChanged(inp, auto) {
+      const v = (inp.value || "").trim();
+      return v !== "" && v !== auto;
     }
     function prefillVat() {
       const total = totalArs();
       const r = vatRatePct();
-      const iva = total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
-      if (vatNetoInp) vatNetoInp.value = round2(total - iva).toFixed(2);
-      if (vatIvaInp) vatIvaInp.value = iva.toFixed(2);
+      if (!(total > 0)) return; // todavía no hay total: no tocar los campos
+      const iva = round2(total - total / (1 + r / 100));
+      const neto = round2(total - iva);
+      if (vatNetoInp && !userChanged(vatNetoInp, autoNeto)) {
+        vatNetoInp.value = neto.toFixed(2);
+        autoNeto = vatNetoInp.value;
+      }
+      if (vatIvaInp && !userChanged(vatIvaInp, autoIva)) {
+        vatIvaInp.value = iva.toFixed(2);
+        autoIva = vatIvaInp.value;
+      }
     }
     function updateVatSummary() {
       const net = vatNetoInp ? parseNum(vatNetoInp.value) : 0;
@@ -200,26 +215,20 @@
       const on = vatChk && vatChk.checked;
       if (vatBox) vatBox.hidden = !on;
       if (!on) return;
-      if (!vatTouched) prefillVat();
+      prefillVat();
       updateVatSummary();
     }
-    if (vatChk)
-      vatChk.addEventListener("change", () => {
-        vatTouched = form.dataset.editing === "1";
-        syncVat();
-      });
+    if (vatChk) vatChk.addEventListener("change", syncVat);
     if (vatRate)
       vatRate.addEventListener("change", () => {
-        vatTouched = false;
+        // cambiar la alícuota = recalcular todo desde el total
+        if (vatNetoInp) vatNetoInp.value = "";
+        if (vatIvaInp) vatIvaInp.value = "";
+        autoNeto = autoIva = "";
         syncVat();
       });
     [vatNetoInp, vatIvaInp].forEach(
-      (el) =>
-        el &&
-        el.addEventListener("input", () => {
-          vatTouched = true;
-          updateVatSummary();
-        })
+      (el) => el && el.addEventListener("input", updateVatSummary)
     );
     [amount, rate].forEach((el) => el && el.addEventListener("input", syncVat));
     currencyRadios.forEach((el) => el.addEventListener("change", syncVat));
@@ -336,7 +345,8 @@
     const otherEl = $("#vat-other", form);
     const totalEl = $("#vat-total", form);
     const itemsBox = $("#items", form);
-    let touched = form.dataset.editing === "1" || !!(netoInp && netoInp.value);
+    let autoNeto = "";
+    let autoIva = "";
 
     function saleTotal() {
       let t = 0;
@@ -347,12 +357,28 @@
       });
       return round2(t);
     }
+    function ratePct() {
+      const r = rateSel ? parseNum(rateSel.value) : 21;
+      return r > 0 ? r : 21;
+    }
+    function userChanged(inp, auto) {
+      const v = (inp.value || "").trim();
+      return v !== "" && v !== auto;
+    }
     function prefill() {
       const total = saleTotal();
-      const r = rateSel ? parseNum(rateSel.value) : 21;
-      const iva = total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
-      if (netoInp) netoInp.value = round2(total - iva).toFixed(2);
-      if (ivaInp) ivaInp.value = iva.toFixed(2);
+      if (!(total > 0)) return;
+      const r = ratePct();
+      const iva = round2(total - total / (1 + r / 100));
+      const neto = round2(total - iva);
+      if (netoInp && !userChanged(netoInp, autoNeto)) {
+        netoInp.value = neto.toFixed(2);
+        autoNeto = netoInp.value;
+      }
+      if (ivaInp && !userChanged(ivaInp, autoIva)) {
+        ivaInp.value = iva.toFixed(2);
+        autoIva = ivaInp.value;
+      }
     }
     function summary() {
       const net = netoInp ? parseNum(netoInp.value) : 0;
@@ -365,26 +391,18 @@
     function sync() {
       if (box) box.hidden = !chk.checked;
       if (!chk.checked) return;
-      if (!touched) prefill();
+      prefill();
       summary();
     }
-    chk.addEventListener("change", () => {
-      touched = form.dataset.editing === "1";
-      sync();
-    });
+    chk.addEventListener("change", sync);
     if (rateSel)
       rateSel.addEventListener("change", () => {
-        touched = false;
+        if (netoInp) netoInp.value = "";
+        if (ivaInp) ivaInp.value = "";
+        autoNeto = autoIva = "";
         sync();
       });
-    [netoInp, ivaInp].forEach(
-      (el) =>
-        el &&
-        el.addEventListener("input", () => {
-          touched = true;
-          summary();
-        })
-    );
+    [netoInp, ivaInp].forEach((el) => el && el.addEventListener("input", summary));
     if (itemsBox) itemsBox.addEventListener("input", sync);
     sync();
   }
