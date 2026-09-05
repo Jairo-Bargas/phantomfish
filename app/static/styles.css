@@ -1,16 +1,17 @@
-/* Phantom Fish — estilos mobile-first */
+/* Phantom Fish — estilos mobile-first
+   Paleta de marca: rojo Phantom Fish + negro + blanco, con un toque celeste (AR). */
 :root {
-  --bg: #f4f5f7;
+  --bg: #f3f1f2;
   --surface: #ffffff;
-  --surface-2: #f9fafb;
-  --border: #e5e7eb;
-  --text: #111827;
-  --text-soft: #6b7280;
-  --primary: #0f766e;
-  --primary-dark: #115e59;
-  --primary-soft: #ccfbf1;
-  --danger: #dc2626;
-  --danger-soft: #fee2e2;
+  --surface-2: #faf6f7;
+  --border: #e7e1e3;
+  --text: #17141a;
+  --text-soft: #6b626a;
+  --primary: #e01f26;        /* rojo de marca — botones, links, estados activos */
+  --primary-dark: #17151a;   /* casi negro — barra superior, :active */
+  --primary-soft: #fbe1e2;   /* rosa acuarela — pills seleccionadas */
+  --danger: #c02830;
+  --danger-soft: #fbe0e1;
   --ok: #16a34a;
   --ok-soft: #dcfce7;
   --warn: #d97706;
@@ -22,17 +23,17 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b1120;
-    --surface: #131a2a;
-    --surface-2: #1b2436;
-    --border: #2a3550;
-    --text: #e5e9f0;
-    --text-soft: #93a1b8;
-    --primary: #2dd4bf;
-    --primary-dark: #14b8a6;
-    --primary-soft: #134e4a;
-    --danger: #f87171;
-    --danger-soft: #3f1d1d;
+    --bg: #100c0e;
+    --surface: #191317;
+    --surface-2: #211a1e;
+    --border: #362a30;
+    --text: #efe7ec;
+    --text-soft: #a99aa2;
+    --primary: #f04a51;
+    --primary-dark: #0d0a0c;
+    --primary-soft: #3b1d21;
+    --danger: #f08a8f;
+    --danger-soft: #3d1c1f;
     --ok: #4ade80;
     --ok-soft: #14351f;
     --warn: #fbbf24;
@@ -66,7 +67,9 @@ h3 { font-size: .95rem; }
   padding-top: max(12px, env(safe-area-inset-top));
   background: var(--primary-dark); color: #fff;
 }
-.brand { color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; }
+.brand { color: #fff; font-weight: 700; font-size: 1.05rem; letter-spacing: .2px;
+  display: flex; align-items: center; }
+.brand-logo { height: 34px; width: auto; display: block; }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
 .chip {
   background: rgba(255,255,255,.16); color: #fff; padding: 6px 11px;
@@ -220,6 +223,7 @@ table.data tr.bad td { background: var(--danger-soft); }
 .doc a { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .login-card { max-width: 380px; width: 100%; margin: 0 auto; }
 .login-logo { font-size: 2.6rem; text-align: center; }
+.login-logo-img { display: block; width: 100%; max-width: 240px; height: auto; margin: 0 auto 6px; }
 hr.sep { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 .pill-toggle { display: flex; gap: 6px; }
 .pill-toggle label {

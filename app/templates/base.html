@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f766e">
+  <meta name="theme-color" content="#17151a">
   <title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ APP_NAME }}</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/icon-192.png">
+  <link rel="icon" href="/static/logo.svg">
+  <link rel="icon" href="/static/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <link rel="stylesheet" href="/static/styles.css?v={{ ASSET_V }}">
 </head>
 <body>
 {% if partner %}
   <header class="topbar">
-    <a href="/" class="brand">🎣 {{ APP_NAME }}</a>
+    <a href="/" class="brand"><img src="/static/logo.svg" alt="{{ APP_NAME }}" class="brand-logo"></a>
     <div class="topbar-right">
       <a href="/socios" class="chip" title="Socios y auditoría">{{ partner.name }}</a>
       <a href="/logout" class="chip chip-ghost">Salir</a>
@@ -21,7 +22,7 @@
   </header>
 {% elif accountant %}
   <header class="topbar">
-    <a href="/contadora" class="brand">🎣 {{ APP_NAME }}</a>
+    <a href="/contadora" class="brand"><img src="/static/logo.svg" alt="{{ APP_NAME }}" class="brand-logo"></a>
     <div class="topbar-right">
       <span class="chip" title="Contadora">{{ accountant.name }}</span>
       <a href="/contadora/salir" class="chip chip-ghost">Salir</a>

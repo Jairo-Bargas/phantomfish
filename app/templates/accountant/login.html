@@ -3,8 +3,7 @@
 {% block content %}
 <div class="login-card">
   <div class="card">
-    <div class="login-logo">🧾</div>
-    <h1 style="text-align:center">{{ APP_NAME }}</h1>
+    <img src="/static/logo.svg" alt="{{ APP_NAME }}" class="login-logo-img">
     <p class="muted small" style="text-align:center">Acceso para la contadora</p>
     <form method="post" action="/contadora/login" class="stack" style="margin-top:14px">
       <div class="field">

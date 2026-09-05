@@ -1,4 +1,9 @@
-"""Genera los íconos PWA (icon-192.png / icon-512.png)."""
+"""Genera los íconos PWA (icon-192.png / icon-512.png) con la marca Phantom Fish.
+
+Ícono simple: fondo negro, pez blanco estilizado, aleta dorsal roja.
+Si querés el logo real, reemplazá app/static/icon-192.png y icon-512.png por
+tus PNG cuadrados (o poné app/static/logo-source.png y este script lo usa).
+"""
 
 from __future__ import annotations
 
@@ -7,37 +12,43 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parent.parent / "app" / "static"
-TEAL = (15, 118, 110)
-TEAL_DARK = (17, 94, 89)
-CREAM = (240, 253, 250)
+SOURCE = OUT / "logo-source.png"
+
+BLACK = (23, 21, 26)
+WHITE = (255, 255, 255)
+RED = (224, 31, 38)
 
 
-def draw_fish(size: int) -> Image.Image:
-    img = Image.new("RGBA", (size, size), TEAL)
+def draw_icon(size: int) -> Image.Image:
+    img = Image.new("RGB", (size, size), BLACK)
     d = ImageDraw.Draw(img)
     s = size / 512
 
-    # cuerpo del pez (elipse) + cola (triángulo)
-    body = [90 * s, 170 * s, 380 * s, 342 * s]
-    d.ellipse(body, fill=CREAM)
+    # cuerpo del pez
+    d.ellipse([120 * s, 190 * s, 400 * s, 330 * s], fill=WHITE)
+    # cola
     d.polygon(
-        [(360 * s, 256 * s), (460 * s, 175 * s), (460 * s, 337 * s)],
-        fill=CREAM,
+        [(150 * s, 260 * s), (60 * s, 180 * s), (60 * s, 340 * s)],
+        fill=WHITE,
+    )
+    # aleta dorsal (roja)
+    d.polygon(
+        [(210 * s, 195 * s), (300 * s, 120 * s), (330 * s, 200 * s)],
+        fill=RED,
     )
     # ojo
-    d.ellipse([150 * s, 228 * s, 178 * s, 256 * s], fill=TEAL_DARK)
-    # "phantom": franja diagonal semitransparente
-    overlay = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    od.line([(120 * s, 60 * s), (420 * s, 452 * s)], fill=(15, 118, 110, 90), width=int(70 * s))
-    img.alpha_composite(overlay)
+    d.ellipse([330 * s, 240 * s, 360 * s, 270 * s], fill=BLACK)
     return img
 
 
 def main() -> None:
+    src = Image.open(SOURCE).convert("RGB") if SOURCE.exists() else None
     for px in (192, 512):
-        icon = draw_fish(512).resize((px, px), Image.LANCZOS)
-        icon.convert("RGB").save(OUT / f"icon-{px}.png")
+        if src is not None:
+            icon = src.resize((px, px), Image.LANCZOS)
+        else:
+            icon = draw_icon(512).resize((px, px), Image.LANCZOS)
+        icon.save(OUT / f"icon-{px}.png")
         print("escrito", OUT / f"icon-{px}.png")
 
 
