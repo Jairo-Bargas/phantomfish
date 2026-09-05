@@ -41,9 +41,13 @@
       <div class="k">{{ label_for('rate_type', payment.exchange_rate_type) }}</div></div>
     {% endif %}
     {% if payment.vat_amount is not none %}
-    <div class="tile"><div class="k">Neto</div><div class="v">{{ payment.net_amount | ars }}</div></div>
+    <div class="tile"><div class="k">Neto gravado</div><div class="v">{{ payment.net_amount | ars }}</div></div>
     <div class="tile"><div class="k">IVA{% if payment.vat_rate is not none %} ({{ payment.vat_rate | pct }}%){% endif %}</div>
       <div class="v">{{ payment.vat_amount | ars }}</div></div>
+    {% if payment.vat_other and payment.vat_other|abs > 0.01 %}
+    <div class="tile"><div class="k">Otros conceptos</div><div class="v">{{ payment.vat_other | ars }}</div>
+      <div class="k">percepciones, etc.</div></div>
+    {% endif %}
     {% endif %}
   </div>
   {% if payment.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ payment.notes }}</p>{% endif %}

@@ -27,9 +27,12 @@
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ sale.total_ars | ars }}</div></div>
     <div class="tile"><div class="k">Ítems</div><div class="v">{{ sale.items | length }}</div></div>
     {% if sale.vat_amount is not none %}
-    <div class="tile"><div class="k">Neto</div><div class="v">{{ sale.net_amount | ars }}</div></div>
+    <div class="tile"><div class="k">Neto gravado</div><div class="v">{{ sale.net_amount | ars }}</div></div>
     <div class="tile"><div class="k">IVA{% if sale.vat_rate is not none %} ({{ sale.vat_rate | pct }}%){% endif %}</div>
       <div class="v">{{ sale.vat_amount | ars }}</div></div>
+    {% if sale.vat_other and sale.vat_other|abs > 0.01 %}
+    <div class="tile"><div class="k">Otros conceptos</div><div class="v">{{ sale.vat_other | ars }}</div></div>
+    {% endif %}
     {% endif %}
   </div>
   {% if sale.notes %}<p class="small" style="margin-top:10px"><strong>Notas:</strong> {{ sale.notes }}</p>{% endif %}

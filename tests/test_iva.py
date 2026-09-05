@@ -43,14 +43,34 @@ def test_payment_discrimina_iva(auth_client):
     assert "10.000,00" in page  # neto
 
 
-def test_payment_manual_iva_override(auth_client):
+def test_payment_iva_with_perceptions(auth_client):
+    # factura real: total 2.282.805,95 = neto 1.797.485 + IVA 377.471,85 + percep. 107.849,10
     _pay(
-        auth_client, concept="Factura con percepcion", vat_discrimina="1", vat_rate="21",
-        vat_amount_manual="3000",
+        auth_client, concept="Factura con percepcion IIBB", date="2026-09-12",
+        currency_charged="ARS", amount_original="2282805.95", exchange_rate="1000",
+        vat_discrimina="1", vat_rate="21",
+        vat_neto="1797485.00", vat_iva="377471.85",
     )
-    pid = _pay_id(auth_client, "Factura con percepcion")
+    pid = _pay_id(auth_client, "Factura con percepcion IIBB")
     page = auth_client.get(f"/pagos/{pid}").text
-    assert "3.000,00" in page  # IVA manual, no el calculado (2100)
+    assert "1.797.485,00" in page       # neto tal cual la factura
+    assert "377.471,85" in page          # IVA tal cual la factura (no el 396k del total/1,21)
+    assert "107.849,10" in page          # otros conceptos (percepciones)
+
+
+def test_payment_iva_net_plus_iva_cannot_exceed_total(auth_client):
+    r = auth_client.post(
+        "/pagos",
+        data={
+            "concept": "IVA imposible", "date": "2026-09-12", "category": "otro",
+            "status": "pagado", "currency_charged": "ARS", "amount_original": "1000",
+            "exchange_rate": "1000", "exchange_rate_type": "oficial", "split_mode": "auto",
+            "billable": "1", "vat_discrimina": "1", "vat_rate": "21",
+            "vat_neto": "900", "vat_iva": "300",
+        },
+        follow_redirects=True,
+    )
+    assert "superar el total" in r.text.lower()
 
 
 def test_iva_panel_position(auth_client):

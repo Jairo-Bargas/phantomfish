@@ -149,7 +149,10 @@ class Payment(Base):
     expense_type: Mapped[str] = mapped_column(String(12), nullable=False, default="negocio")
     paid_by_partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"))
     # IVA discriminado (Factura A). NULL = no discrimina. Congelados al guardar.
+    # vat_net = neto gravado tal cual la factura; el total puede tener además
+    # percepciones u otros conceptos (total - neto - IVA).
     vat_amount: Mapped[Decimal | None] = mapped_column(Money())
+    vat_net: Mapped[Decimal | None] = mapped_column(Money())
     vat_rate: Mapped[Decimal | None] = mapped_column(Rate())
 
     notes: Mapped[str | None] = mapped_column(Text)
@@ -193,10 +196,20 @@ class Payment(Base):
 
     @property
     def net_amount(self) -> Decimal | None:
-        """Neto = total - IVA (solo si discrimina IVA)."""
+        """Neto gravado (solo si discrimina IVA)."""
         if self.vat_amount is None:
             return None
+        if self.vat_net is not None:
+            return money(self.vat_net)
         return money(Decimal(str(self.amount_ars)) - Decimal(str(self.vat_amount)))
+
+    @property
+    def vat_other(self) -> Decimal | None:
+        """Total - neto - IVA: percepciones u otros conceptos de la factura."""
+        if self.vat_amount is None:
+            return None
+        net = self.net_amount or Decimal(0)
+        return money(Decimal(str(self.amount_ars)) - net - Decimal(str(self.vat_amount)))
 
 
 class PaymentContribution(Base):
@@ -314,6 +327,7 @@ class Sale(Base):
     invoice_number: Mapped[str | None] = mapped_column(String(80))  # factura emitida (contadora)
     # IVA discriminado (Factura A emitida = débito fiscal). NULL = no discrimina.
     vat_amount: Mapped[Decimal | None] = mapped_column(Money())
+    vat_net: Mapped[Decimal | None] = mapped_column(Money())
     vat_rate: Mapped[Decimal | None] = mapped_column(Rate())
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -333,10 +347,19 @@ class Sale(Base):
 
     @property
     def net_amount(self) -> Decimal | None:
-        """Neto = total - IVA (solo si discrimina IVA)."""
+        """Neto gravado (solo si discrimina IVA)."""
         if self.vat_amount is None:
             return None
+        if self.vat_net is not None:
+            return money(self.vat_net)
         return money(Decimal(str(self.total_ars)) - Decimal(str(self.vat_amount)))
+
+    @property
+    def vat_other(self) -> Decimal | None:
+        if self.vat_amount is None:
+            return None
+        net = self.net_amount or Decimal(0)
+        return money(Decimal(str(self.total_ars)) - net - Decimal(str(self.vat_amount)))
 
 
 class SaleItem(Base):

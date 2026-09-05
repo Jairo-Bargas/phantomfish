@@ -166,29 +166,62 @@
       syncExpenseType();
     }
 
-    /* ---- IVA discriminado: mostrar caja + calcular neto/IVA ---- */
+    /* ---- IVA discriminado: neto e IVA como la factura ---- */
     const vatChk = $("#vat-discrimina", form);
     const vatBox = $("#vat-box", form);
     const vatRate = $("#vat_rate", form);
-    const vatManual = $("#vat_amount_manual", form);
-    const vatNeto = $("#vat-neto", form);
-    const vatIva = $("#vat-iva", form);
+    const vatNetoInp = $("#vat_neto", form);
+    const vatIvaInp = $("#vat_iva", form);
+    const vatSumEl = $("#vat-sum", form);
+    const vatOtherEl = $("#vat-other", form);
+    const vatTotalEl = $("#vat-total", form);
+    // En edición respetamos lo guardado; en pago nuevo el prellenado manda.
+    let vatTouched = form.dataset.editing === "1";
+
+    function vatRatePct() {
+      return vatRate ? parseNum(vatRate.value) : 21;
+    }
+    function prefillVat() {
+      const total = totalArs();
+      const r = vatRatePct();
+      const iva = total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
+      if (vatNetoInp) vatNetoInp.value = round2(total - iva).toFixed(2);
+      if (vatIvaInp) vatIvaInp.value = iva.toFixed(2);
+    }
+    function updateVatSummary() {
+      const net = vatNetoInp ? parseNum(vatNetoInp.value) : 0;
+      const iva = vatIvaInp ? parseNum(vatIvaInp.value) : 0;
+      const total = totalArs();
+      if (vatSumEl) vatSumEl.textContent = fmtARS(round2(net + iva));
+      if (vatOtherEl) vatOtherEl.textContent = fmtARS(round2(total - net - iva));
+      if (vatTotalEl) vatTotalEl.textContent = fmtARS(total);
+    }
     function syncVat() {
       const on = vatChk && vatChk.checked;
       if (vatBox) vatBox.hidden = !on;
       if (!on) return;
-      const total = totalArs();
-      const manual = vatManual ? parseNum(vatManual.value) : 0;
-      const r = vatRate ? parseNum(vatRate.value) : 21;
-      let iva = manual > 0 ? manual : total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
-      if (iva > total) iva = total;
-      if (vatIva) vatIva.textContent = fmtARS(iva);
-      if (vatNeto) vatNeto.textContent = fmtARS(round2(total - iva));
+      if (!vatTouched) prefillVat();
+      updateVatSummary();
     }
-    [vatChk, vatRate, vatManual, amount, rate].forEach(
-      (el) => el && el.addEventListener("input", syncVat)
+    if (vatChk)
+      vatChk.addEventListener("change", () => {
+        vatTouched = form.dataset.editing === "1";
+        syncVat();
+      });
+    if (vatRate)
+      vatRate.addEventListener("change", () => {
+        vatTouched = false;
+        syncVat();
+      });
+    [vatNetoInp, vatIvaInp].forEach(
+      (el) =>
+        el &&
+        el.addEventListener("input", () => {
+          vatTouched = true;
+          updateVatSummary();
+        })
     );
-    if (vatChk) vatChk.addEventListener("change", syncVat);
+    [amount, rate].forEach((el) => el && el.addEventListener("input", syncVat));
     currencyRadios.forEach((el) => el.addEventListener("change", syncVat));
     syncVat();
 
@@ -297,10 +330,13 @@
     if (!chk) return;
     const box = $("#vat-box", form);
     const rateSel = $("#vat_rate", form);
-    const manual = $("#vat_amount_manual", form);
-    const netoEl = $("#vat-neto", form);
-    const ivaEl = $("#vat-iva", form);
+    const netoInp = $("#vat_neto", form);
+    const ivaInp = $("#vat_iva", form);
+    const sumEl = $("#vat-sum", form);
+    const otherEl = $("#vat-other", form);
+    const totalEl = $("#vat-total", form);
     const itemsBox = $("#items", form);
+    let touched = form.dataset.editing === "1" || !!(netoInp && netoInp.value);
 
     function saleTotal() {
       let t = 0;
@@ -311,19 +347,44 @@
       });
       return round2(t);
     }
+    function prefill() {
+      const total = saleTotal();
+      const r = rateSel ? parseNum(rateSel.value) : 21;
+      const iva = total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
+      if (netoInp) netoInp.value = round2(total - iva).toFixed(2);
+      if (ivaInp) ivaInp.value = iva.toFixed(2);
+    }
+    function summary() {
+      const net = netoInp ? parseNum(netoInp.value) : 0;
+      const iva = ivaInp ? parseNum(ivaInp.value) : 0;
+      const total = saleTotal();
+      if (sumEl) sumEl.textContent = fmtARS(round2(net + iva));
+      if (otherEl) otherEl.textContent = fmtARS(round2(total - net - iva));
+      if (totalEl) totalEl.textContent = fmtARS(total);
+    }
     function sync() {
       if (box) box.hidden = !chk.checked;
       if (!chk.checked) return;
-      const total = saleTotal();
-      const m = manual ? parseNum(manual.value) : 0;
-      const r = rateSel ? parseNum(rateSel.value) : 21;
-      let iva = m > 0 ? m : total > 0 && r > 0 ? round2(total - total / (1 + r / 100)) : 0;
-      if (iva > total) iva = total;
-      if (ivaEl) ivaEl.textContent = fmtARS(iva);
-      if (netoEl) netoEl.textContent = fmtARS(round2(total - iva));
+      if (!touched) prefill();
+      summary();
     }
-    [chk, rateSel, manual].forEach((el) => el && el.addEventListener("input", sync));
-    chk.addEventListener("change", sync);
+    chk.addEventListener("change", () => {
+      touched = form.dataset.editing === "1";
+      sync();
+    });
+    if (rateSel)
+      rateSel.addEventListener("change", () => {
+        touched = false;
+        sync();
+      });
+    [netoInp, ivaInp].forEach(
+      (el) =>
+        el &&
+        el.addEventListener("input", () => {
+          touched = true;
+          summary();
+        })
+    );
     if (itemsBox) itemsBox.addEventListener("input", sync);
     sync();
   }

@@ -28,6 +28,8 @@ _ADD_COLUMNS: list[tuple[str, str, str]] = [
     ("sales", "vat_amount", "TEXT"),
     ("sales", "vat_rate", "TEXT"),
     ("documents", "kind", "TEXT NOT NULL DEFAULT 'otro'"),
+    ("payments", "vat_net", "TEXT"),
+    ("sales", "vat_net", "TEXT"),
 ]
 
 # Se corren después de agregar columnas, solo si la columna acaba de aparecer.

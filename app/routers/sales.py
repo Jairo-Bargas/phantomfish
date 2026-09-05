@@ -13,7 +13,7 @@ from app.audit import record, snapshot
 from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
-from app.money import ZERO, dsum
+from app.money import CENT, ZERO, dsum, money
 from app.models import Partner, Sale, SaleItem
 from app.services.documents import attach_files, list_documents
 from app.services.payments import parse_date
@@ -44,18 +44,29 @@ def _num(value: str, field: str, quant: Decimal = Decimal("0.01")) -> Decimal:
 
 
 def _apply_vat(sale: Sale, form: dict) -> None:
-    """Fija sale.vat_amount / vat_rate según el form y el total actual."""
+    """Fija sale.vat_amount / vat_net / vat_rate según el form y el total actual.
+
+    Neto e IVA se cargan tal cual la factura; si no se tocan, se calculan del
+    total con la alícuota. El resto del total son percepciones / otros conceptos.
+    """
     if not form.get("vat_discrimina"):
-        sale.vat_amount = None
-        sale.vat_rate = None
+        sale.vat_amount = sale.vat_net = sale.vat_rate = None
         return
     rate_pct = parse_rate(form.get("vat_rate")) or DEFAULT_VAT_RATE
-    manual = _num(form.get("vat_amount_manual", ""), "IVA")
     total = sale.total_ars
-    vat = manual if manual > ZERO else vat_from_total(total, rate_pct)
-    if vat > total:
-        raise ValueError("El IVA no puede ser mayor que el total de la venta.")
-    sale.vat_amount = vat
+    net = _num(form.get("vat_neto", ""), "Neto gravado")
+    iva = _num(form.get("vat_iva", ""), "IVA")
+    if net <= ZERO and iva <= ZERO:
+        iva = vat_from_total(total, rate_pct)
+        net = money(total - iva)
+    elif iva <= ZERO:
+        iva = money(net * rate_pct / Decimal(100))
+    elif net <= ZERO:
+        net = money(total - iva)
+    if money(net + iva) > money(total + CENT):
+        raise ValueError("Neto + IVA no puede superar el total de la venta.")
+    sale.vat_amount = iva
+    sale.vat_net = net
     sale.vat_rate = rate_pct
 
 
@@ -247,7 +258,8 @@ async def edit_sale(
                 "invoice_number": sale.invoice_number or "",
                 "vat_discrimina": "1" if sale.vat_amount is not None else "",
                 "vat_rate": (f"{sale.vat_rate.normalize():f}" if sale.vat_rate is not None else "21"),
-                "vat_amount_manual": (f"{sale.vat_amount:.2f}" if sale.vat_amount is not None else ""),
+                "vat_neto": (f"{sale.net_amount:.2f}" if sale.vat_amount is not None else ""),
+                "vat_iva": (f"{sale.vat_amount:.2f}" if sale.vat_amount is not None else ""),
                 "notes": sale.notes or "",
             },
             "items": [

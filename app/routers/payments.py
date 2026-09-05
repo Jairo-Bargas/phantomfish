@@ -13,7 +13,7 @@ from app.audit import record, snapshot
 from app.auth import get_current_partner, require_owner
 from app.constants import valid_codes
 from app.database import get_db
-from app.money import ZERO, dsum, money, rate
+from app.money import CENT, ZERO, dsum, money, rate
 from app.models import Partner, Payment
 from app.services.categories import valid_category_codes
 from app.services.documents import attach_files, list_documents
@@ -73,18 +73,35 @@ def _parse_amount_opt(value: str | None, field: str) -> Decimal | None:
     return _parse_amount(value, field)
 
 
-def _vat_from_form(form: dict, total_ars: Decimal) -> tuple[Decimal | None, Decimal | None]:
-    """(vat_amount, vat_rate) a partir del form. (None, None) si no discrimina IVA."""
+def _vat_from_form(
+    form: dict, total_ars: Decimal
+) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
+    """(vat_amount, vat_rate, vat_net) del form. (None, None, None) si no discrimina IVA.
+
+    El usuario carga Neto e IVA tal cual la factura. Si no los toca, se calculan
+    desde el total con la alícuota (caso común 21% limpio). El total puede tener
+    además percepciones u otros conceptos (total - neto - IVA).
+    """
     if not form.get("vat_discrimina"):
-        return None, None
+        return None, None, None
     rate_pct = parse_rate(form.get("vat_rate")) or DEFAULT_VAT_RATE
-    manual = _parse_amount_opt(form.get("vat_amount_manual"), "IVA")
-    vat_amount = manual if manual is not None else vat_from_total(total_ars, rate_pct)
-    if vat_amount < ZERO:
-        raise ValueError("El IVA no puede ser negativo.")
-    if vat_amount > money(total_ars):
-        raise ValueError("El IVA no puede ser mayor que el total.")
-    return vat_amount, rate_pct
+    total = money(total_ars)
+    net = _parse_amount_opt(form.get("vat_neto"), "Neto gravado")
+    iva = _parse_amount_opt(form.get("vat_iva"), "IVA")
+    if net is None and iva is None:
+        iva = vat_from_total(total, rate_pct)
+        net = money(total - iva)
+    elif iva is None:
+        iva = money(net * rate_pct / Decimal(100))
+    elif net is None:
+        net = money(total - iva)
+    if iva < ZERO or net < ZERO:
+        raise ValueError("El neto y el IVA no pueden ser negativos.")
+    if money(net + iva) > money(total + CENT):
+        raise ValueError(
+            "Neto + IVA no puede superar el total del pago. Revisá los montos."
+        )
+    return iva, rate_pct, net
 
 
 def _contribution_inputs(form: dict, partners: list[Partner]) -> dict[int, Decimal] | None:
@@ -352,7 +369,7 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         if paid_by_id is None:
             raise ValueError("Elegí qué socio pagó este gasto personal.")
 
-    vat_amount, vat_rate = _vat_from_form(form, amounts.amount_ars)
+    vat_amount, vat_rate, vat_net = _vat_from_form(form, amounts.amount_ars)
 
     return Payment(
         date=parse_date(form.get("date")),
@@ -371,6 +388,7 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         expense_type=expense_type,
         paid_by_partner_id=paid_by_id,
         vat_amount=vat_amount,
+        vat_net=vat_net,
         vat_rate=vat_rate,
         notes=(form.get("notes") or "").strip() or None,
     )
@@ -484,7 +502,8 @@ async def edit_payment(
             "paid_by_partner_id": str(payment.paid_by_partner_id or ""),
             "vat_discrimina": "1" if payment.vat_amount is not None else "",
             "vat_rate": (f"{payment.vat_rate.normalize():f}" if payment.vat_rate is not None else "21"),
-            "vat_amount_manual": (f"{payment.vat_amount:.2f}" if payment.vat_amount is not None else ""),
+            "vat_neto": (f"{payment.net_amount:.2f}" if payment.vat_amount is not None else ""),
+            "vat_iva": (f"{payment.vat_amount:.2f}" if payment.vat_amount is not None else ""),
             "notes": payment.notes or "",
         },
         "contributions": {p.id: contrib.get(p.id, ZERO) for p in partners},
@@ -521,7 +540,7 @@ async def update_payment(
         "date", "concept", "category", "currency_charged", "amount_original",
         "exchange_rate", "exchange_rate_type", "amount_ars", "amount_usd", "status",
         "order_id", "invoice_number", "billable", "expense_type", "paid_by_partner_id",
-        "vat_amount", "vat_rate", "notes",
+        "vat_amount", "vat_net", "vat_rate", "notes",
     ):
         setattr(payment, field, getattr(new_data, field))
     apply_contributions(db, payment, amounts_by_partner)

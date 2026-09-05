@@ -100,7 +100,8 @@ def _sheet_pagos(
     headers += [f"Corresponde {n} (ARS)" for n in p_names]
     headers += [f"Aportó {n} (ARS)" for n in p_names]
     headers += ["Suma aportes", "Control", "Notas",
-                "N° Factura", "IVA (ARS)", "Facturable", "Tipo gasto"]
+                "N° Factura", "Neto gravado (ARS)", "IVA (ARS)", "Otros (ARS)",
+                "Facturable", "Tipo gasto"]
     _header(ws, 3, headers)
 
     payments = list(
@@ -132,7 +133,9 @@ def _sheet_pagos(
             *corresponde, *aporto, _dec(suma),
             "OK" if ok else "REVISAR", pay.notes or "",
             pay.invoice_number or "",
+            _dec(pay.net_amount) if pay.vat_amount is not None else "",
             _dec(pay.vat_amount) if pay.vat_amount is not None else "",
+            _dec(pay.vat_other) if pay.vat_amount is not None else "",
             "Sí" if pay.billable else "No",
             "Personal" if pay.expense_type == "personal" else "Negocio",
         ]
@@ -162,7 +165,7 @@ def _sheet_pagos(
         cell.number_format = MONEY_FMT
 
     widths = ([10, 12, 34, 15, 8, 14, 12, 10, 15, 15, 11] + [18] * (2 * n)
-              + [15, 10, 30, 16, 14, 11, 11])
+              + [15, 10, 30, 16, 16, 14, 13, 11, 11])
     _autofit(ws, widths)
     ws.freeze_panes = "C4"
 
@@ -221,7 +224,7 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
     headers = [
         "ID", "Fecha", "Cliente / Canal", "Producto", "Cantidad",
         "Precio unit. (ARS)", "Total (ARS)", "Medio de pago", "Estado", "Notas",
-        "N° Factura", "IVA (ARS)",
+        "N° Factura", "Neto gravado (ARS)", "IVA (ARS)", "Otros (ARS)",
     ]
     _header(ws, 3, headers)
 
@@ -247,12 +250,14 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
                 label_for("sale_status", sale.status),
                 sale.notes or "",
                 sale.invoice_number or "",
+                _dec(sale.net_amount) if sale.vat_amount is not None else "",
                 _dec(sale.vat_amount) if sale.vat_amount is not None else "",
+                _dec(sale.vat_other) if sale.vat_amount is not None else "",
             ]
             for col, val in enumerate(values, start=1):
                 c = ws.cell(row=row, column=col, value=val)
                 c.border = BOX
-                if col in (6, 7, 12) and isinstance(val, float):
+                if col in (6, 7, 12, 13, 14) and isinstance(val, float):
                     c.number_format = MONEY_FMT
             row += 1
 
@@ -260,7 +265,7 @@ def _sheet_ventas(wb: Workbook, db: Session, date_from, date_to) -> None:
     tc = ws.cell(row=row + 1, column=7, value=f"=SUM(G4:G{row - 1})")
     tc.font = TOTAL_FONT
     tc.number_format = MONEY_FMT
-    _autofit(ws, [10, 12, 28, 30, 10, 16, 14, 16, 12, 26, 16, 14])
+    _autofit(ws, [10, 12, 28, 30, 10, 16, 14, 16, 12, 26, 16, 16, 14, 13])
     ws.freeze_panes = "C4"
 
 
