@@ -4,6 +4,8 @@ Nota: las categorías de pago (PAYMENT_CATEGORIES) ahora se pueden editar desde 
 app — esta lista es solo la carga inicial (ver app/seed.py).
 """
 
+from decimal import Decimal
+
 # Carga inicial de la tabla `categories`. Después se editan desde /categorias.
 PAYMENT_CATEGORIES = [
     ("importacion", "Importación"),
@@ -12,8 +14,17 @@ PAYMENT_CATEGORIES = [
     ("impuesto", "Impuesto"),
     ("logistica", "Logística"),
     ("comision", "Comisión"),
+    ("pase_colon", "Pase Colón"),
     ("otro", "Otro"),
 ]
+
+# Categorías que la app necesita que existan siempre (se re-crean en cada arranque
+# si el usuario las borró). code -> label.
+SYSTEM_CATEGORIES = [("pase_colon", "Pase Colón")]
+
+# Peaje del puente internacional a Colón, ida + vuelta. Un socio lo paga y se
+# reparte 35/65. Cambiá este valor cuando el puente actualice la tarifa.
+PASE_COLON_ARS = Decimal("4000")
 
 PAYMENT_STATUS = [
     ("pagado", "Pagado"),

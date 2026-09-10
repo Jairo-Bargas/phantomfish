@@ -7,9 +7,11 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func
+
 from app.auth import hash_password
 from app.config import get_settings
-from app.constants import PAYMENT_CATEGORIES
+from app.constants import PAYMENT_CATEGORIES, SYSTEM_CATEGORIES
 from app.database import Base, SessionLocal, engine
 from app.migrate import run_migrations
 from app.models import Category, Partner
@@ -26,6 +28,18 @@ def seed_categories(db: Session) -> None:
     for order, (code, label) in enumerate(PAYMENT_CATEGORIES, start=1):
         db.add(Category(code=code, label=label, active=True, sort_order=order * 10))
     db.commit()
+
+
+def ensure_system_categories(db: Session) -> None:
+    """Crea las categorías que la app necesita si no están (idempotente)."""
+    added = False
+    for code, label in SYSTEM_CATEGORIES:
+        if not db.scalar(select(Category).where(Category.code == code)):
+            n = db.scalar(select(func.max(Category.sort_order))) or 0
+            db.add(Category(code=code, label=label, active=True, sort_order=n + 10))
+            added = True
+    if added:
+        db.commit()
 
 
 def seed_partners(db: Session) -> list[Partner]:
@@ -69,6 +83,7 @@ def init_db() -> None:
     with SessionLocal() as db:
         seed_partners(db)
         seed_categories(db)
+        ensure_system_categories(db)
         ensure_owner(db)
 
 
