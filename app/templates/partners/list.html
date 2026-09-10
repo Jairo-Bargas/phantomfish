@@ -40,20 +40,21 @@
   <div class="section-head"><h2>Pases a Colón</h2></div>
   <p class="hint">Peaje del puente (ida + vuelta). El que lo registra lo pagó: su parte queda
     saldada y la del otro socio queda pendiente en el saldo de arriba.
-    Poné lo que pagaste en cada moneda (dejá 0 la que no usaste).</p>
+    Ya viene con {{ pase.prefill_uyu | moneda('UYU') }} cargado: si pagaste eso, tocá Registrar nomás.
+    Cambiá los montos solo si pagaste otra cosa.</p>
   <form method="post" action="/socios/pase-colon" class="stack"
-        data-confirm="¿Registrar un pase a Colón pagado por vos ({{ partner.name }})?">
+        data-confirm="¿Registrar el pase? Queda a nombre tuyo ({{ partner.name }}).">
     <div class="grid-2">
-      <div class="field">
-        <label for="pase-ars">Pesos argentinos</label>
-        <input id="pase-ars" name="ars" inputmode="decimal" value="0" placeholder="{{ pase.prefill_ars }}">
-      </div>
       <div class="field">
         <label for="pase-uyu">Pesos uruguayos</label>
         <input id="pase-uyu" name="uyu" inputmode="decimal" value="{{ pase.prefill_uyu }}">
       </div>
+      <div class="field">
+        <label for="pase-ars">Pesos argentinos</label>
+        <input id="pase-ars" name="ars" inputmode="decimal" value="0" placeholder="{{ pase.prefill_ars }}">
+      </div>
     </div>
-    <button class="btn btn-primary btn-block" type="submit">Registrar pase — pagué yo</button>
+    <button class="btn btn-primary btn-block" type="submit">Registrar pase</button>
   </form>
   {% if pase.count %}
   <p class="small muted" style="margin-top:10px">
