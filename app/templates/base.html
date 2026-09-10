@@ -13,7 +13,7 @@
 <body>
 {% if partner %}
   <header class="topbar">
-    <a href="/" class="brand"><span class="brand-txt">PHANTOM</span><span class="brand-fish">FISH</span></a>
+    <a href="/" class="brand"><img src="/static/logo-mark.png?v={{ ASSET_V }}" alt="{{ APP_NAME }}" class="brand-logo"></a>
     <div class="topbar-right">
       <a href="/socios" class="chip" title="Socios y auditoría">{{ partner.name }}</a>
       <a href="/logout" class="chip chip-ghost">Salir</a>
@@ -21,7 +21,7 @@
   </header>
 {% elif accountant %}
   <header class="topbar">
-    <a href="/contadora" class="brand"><span class="brand-txt">PHANTOM</span><span class="brand-fish">FISH</span></a>
+    <a href="/contadora" class="brand"><img src="/static/logo-mark.png?v={{ ASSET_V }}" alt="{{ APP_NAME }}" class="brand-logo"></a>
     <div class="topbar-right">
       <span class="chip" title="Contadora">{{ accountant.name }}</span>
       <a href="/contadora/salir" class="chip chip-ghost">Salir</a>

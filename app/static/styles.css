@@ -67,11 +67,10 @@ h3 { font-size: .95rem; }
   padding-top: max(12px, env(safe-area-inset-top));
   background: var(--primary-dark); color: #fff;
 }
-.brand { display: flex; align-items: center; gap: 5px; }
-.brand-txt { color: #fff; font-weight: 800; letter-spacing: 1.5px; font-size: 1rem; }
-.brand-fish {
-  background: var(--primary); color: #fff; font-weight: 800; letter-spacing: 1.5px;
-  font-size: 1rem; padding: 2px 8px; border-radius: 7px;
+.brand { display: flex; align-items: center; }
+.brand-logo {
+  display: block; height: 30px; width: auto;
+  background: #fff; padding: 4px 9px; border-radius: 9px;
 }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
 .chip {
