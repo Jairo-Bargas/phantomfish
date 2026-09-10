@@ -416,6 +416,27 @@ class Settlement(Base):
     )
 
 
+class PaseColon(Base):
+    """Una pasada por el puente internacional a Colón.
+
+    La paga el socio que la registra; su parte (según %) queda saldada y la del
+    otro socio queda pendiente. Se lleva en las dos monedas por separado, sin
+    conversión: cada pasada tiene un monto en pesos y/o en pesos uruguayos.
+    """
+
+    __tablename__ = "pases_colon"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    paid_by_partner_id: Mapped[int] = mapped_column(ForeignKey("partners.id"), nullable=False)
+    amount_ars: Mapped[Decimal] = mapped_column(Money(), nullable=False, default=Decimal(0))
+    amount_uyu: Mapped[Decimal] = mapped_column(Money(), nullable=False, default=Decimal(0))
+    created_by: Mapped[str | None] = mapped_column(String(60))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    paid_by: Mapped["Partner"] = relationship()
+
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -454,6 +475,7 @@ __all__ = [
     "ExchangeRateLog",
     "InventoryMovement",
     "Order",
+    "PaseColon",
     "Partner",
     "Payment",
     "PaymentContribution",

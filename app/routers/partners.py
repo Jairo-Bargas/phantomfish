@@ -14,22 +14,36 @@ import unicodedata
 
 from app.audit import record
 from app.auth import get_current_partner, hash_password, require_owner
-from app.constants import PASE_COLON_ARS
+from app.constants import PASE_COLON_ARS, PASE_COLON_UYU
 from app.database import get_db
-from app.models import Accountant, AuditLog, Partner, Payment
-from app.money import ZERO, dsum, money
-from app.services.payments import active_partners, apply_contributions, compute_amounts
+from app.models import Accountant, AuditLog, PaseColon, Partner
+from app.money import ZERO, money
+from app.services.pases import pase_saldo
+from app.services.payments import active_partners
 from app.services.settlements import list_settlements
 from app.services.summary import build_summary
 from app.web import flash, redirect, render
 
-_PASE_CATEGORY = "pase_colon"
 
-
-def _ars(value: Decimal) -> str:
+def _cur(value: Decimal, prefix: str) -> str:
     d = money(value)
     entero, _, dec = f"{abs(d):.2f}".partition(".")
-    return ("-" if d < 0 else "") + "$ " + f"{int(entero):,}".replace(",", ".") + f",{dec}"
+    return ("-" if d < 0 else "") + f"{prefix} " + f"{int(entero):,}".replace(",", ".") + f",{dec}"
+
+
+def _parse_money(value: str | None) -> Decimal:
+    v = str(value or "").strip().replace(" ", "")
+    if not v:
+        return ZERO
+    if "," in v and v.rfind(",") > v.rfind("."):
+        v = v.replace(".", "").replace(",", ".")
+    else:
+        v = v.replace(",", "")
+    try:
+        return money(v)
+    except (ValueError, ArithmeticError):
+        return ZERO
+
 
 router = APIRouter(prefix="/socios")
 
@@ -52,29 +66,45 @@ async def list_partners(
         db.scalars(select(AuditLog).order_by(AuditLog.changed_at.desc()).limit(30))
     )
     recent_settlements = list_settlements(db, limit=6)
+    active = active_partners(db)  # ordenados por id: [socio A, socio B]
 
-    # saldo de aportes (neto de los pagos compartidos) — quién le debe a quién
+    # --- saldo entre socios ---
+    # ARS = neto de los aportes de pagos compartidos + neto de las pasadas en pesos.
+    # UYU = neto de las pasadas en pesos uruguayos. Sin conversión entre monedas.
     summary = build_summary(db)
-    ranked = sorted(summary.partners, key=lambda x: x.balance)
-    aportes = {"partners": summary.partners, "deudor": None, "acreedor": None, "monto": ZERO}
-    if ranked and ranked[0].balance < -Decimal("0.5") and ranked[-1].balance > Decimal("0.5"):
-        aportes["deudor"] = ranked[0].name
-        aportes["acreedor"] = ranked[-1].name
-        aportes["monto"] = ranked[-1].balance
+    ps = pase_saldo(db, active)
+    aportes_ars = summary.partners[0].balance if summary.partners else ZERO  # + => B le debe a A
+    saldo = {
+        "socio_a": active[0].name if active else "",
+        "socio_b": active[1].name if len(active) > 1 else "",
+        "aportes_ars": money(aportes_ars),
+        "pase_ars": ps.net_ars,
+        "pase_uyu": ps.net_uyu,
+        "net_ars": money(aportes_ars + ps.net_ars),
+        "net_uyu": ps.net_uyu,
+    }
+    # dirección legible por moneda
+    def _dir(net: Decimal):
+        if net > Decimal("0.5"):
+            return {"deudor": saldo["socio_b"], "acreedor": saldo["socio_a"], "monto": net}
+        if net < Decimal("-0.5"):
+            return {"deudor": saldo["socio_a"], "acreedor": saldo["socio_b"], "monto": -net}
+        return None
+    saldo["ars"] = _dir(saldo["net_ars"])
+    saldo["uyu"] = _dir(saldo["net_uyu"])
 
-    # recap de pases a Colón
     pases = list(
-        db.scalars(select(Payment).where(Payment.category == _PASE_CATEGORY)
-                   .order_by(Payment.date.desc(), Payment.id.desc()))
+        db.scalars(select(PaseColon).order_by(PaseColon.date.desc(), PaseColon.id.desc()).limit(8))
     )
-    month0 = dt.date.today().replace(day=1)
-    pases_mes = [p for p in pases if p.date >= month0]
-    pase = {
-        "monto": money(PASE_COLON_ARS),
-        "count_total": len(pases),
-        "count_mes": len(pases_mes),
-        "total_mes": dsum(p.amount_ars for p in pases_mes),
-        "ultima": pases[0].date if pases else None,
+    pase_recap = {
+        "prefill_ars": f"{PASE_COLON_ARS:.0f}",
+        "prefill_uyu": f"{PASE_COLON_UYU:.0f}",
+        "count": ps.count,
+        "count_mes": ps.count_mes,
+        "total_ars": ps.total_ars,
+        "total_uyu": ps.total_uyu,
+        "ultima": ps.ultima,
+        "recientes": pases,
     }
 
     return render(
@@ -87,8 +117,8 @@ async def list_partners(
             "total_pct": total_pct,
             "recent_audit": recent_audit,
             "recent_settlements": recent_settlements,
-            "aportes": aportes,
-            "pase": pase,
+            "saldo": saldo,
+            "pase": pase_recap,
         },
         db=db,
     )
@@ -137,43 +167,65 @@ async def register_pase_colon(
     partner: Partner = Depends(get_current_partner),
     db: Session = Depends(get_db),
 ):
-    """Registra una pasada al puente de Colón: la paga el socio que toca el
-    botón (su parte queda saldada) y la parte del otro socio queda pendiente."""
+    """Registra una pasada al puente de Colón. La paga el socio que la registra:
+    su parte queda saldada y la del otro socio queda pendiente. Se guarda en las
+    dos monedas por separado (pesos y/o pesos uruguayos), sin conversión."""
     partners = active_partners(db)
     if len(partners) < 2:
         flash(request, "Necesitás los dos socios activos para registrar una pasada.", "error")
         return redirect("/socios")
 
-    total = money(PASE_COLON_ARS)
-    amounts = compute_amounts(currency_charged="ARS", amount_original=total, exchange_rate=ZERO)
-    pay = Payment(
+    form = dict((await request.form()).multi_items())
+    ars = _parse_money(form.get("ars"))
+    uyu = _parse_money(form.get("uyu"))
+    if ars <= ZERO and uyu <= ZERO:
+        flash(request, "Poné el monto del pase (en pesos y/o en pesos uruguayos).", "error")
+        return redirect("/socios")
+
+    row = PaseColon(
         date=dt.date.today(),
-        concept=f"Pase Colón — pagó {partner.name}",
-        category=_PASE_CATEGORY,
-        currency_charged="ARS",
-        amount_original=total,
-        exchange_rate=amounts.exchange_rate,
-        exchange_rate_type="oficial",
-        amount_ars=amounts.amount_ars,
-        amount_usd=amounts.amount_usd,
-        status="pagado",
-        billable=False,
-        expense_type="negocio",
+        paid_by_partner_id=partner.id,
+        amount_ars=ars,
+        amount_uyu=uyu,
         created_by=partner.username,
     )
-    # el que toca el botón puso el 100%; el reparto "que correspondía" es 35/65
-    apply_contributions(db, pay, {p.id: (total if p.id == partner.id else ZERO) for p in partners})
-    db.add(pay)
+    db.add(row)
     db.flush()
-    record(db, obj=pay, action="insert", changed_by=partner.username,
-           summary=f"Pase Colón registrado (pagó {partner.name})")
+    montos = " + ".join(
+        x for x in [_cur(ars, "$") if ars > ZERO else "", _cur(uyu, "$U") if uyu > ZERO else ""] if x
+    )
+    record(db, obj=row, action="insert", changed_by=partner.username,
+           summary=f"Pase Colón (pagó {partner.name}): {montos}")
     db.commit()
 
     other = next(p for p in partners if p.id != partner.id)
-    otra_parte = money(total * Decimal(str(other.pct_share)) / Decimal(100))
+    pct = Decimal(str(other.pct_share)) / Decimal(100)
+    partes = " + ".join(
+        x for x in [
+            _cur(money(ars * pct), "$") if ars > ZERO else "",
+            _cur(money(uyu * pct), "$U") if uyu > ZERO else "",
+        ] if x
+    )
     flash(request,
-          f"Pase Colón registrado ({_ars(total)}). Lo pagaste vos; "
-          f"la parte de {other.name} ({other.pct_share:.0f}%) = {_ars(otra_parte)} queda pendiente.")
+          f"Pase Colón registrado ({montos}). Lo pagaste vos; "
+          f"la parte de {other.name} ({other.pct_share:.0f}%) = {partes} queda pendiente.")
+    return redirect("/socios")
+
+
+@router.post("/pase-colon/{pase_id}/eliminar")
+async def delete_pase_colon(
+    pase_id: int,
+    request: Request,
+    partner: Partner = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    row = db.get(PaseColon, pase_id)
+    if row:
+        record(db, obj=row, action="delete", changed_by=partner.username,
+               summary=f"Pase Colón #{row.id} eliminado")
+        db.delete(row)
+        db.commit()
+        flash(request, "Pase eliminado.")
     return redirect("/socios")
 
 

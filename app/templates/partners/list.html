@@ -7,46 +7,75 @@
 </div>
 
 <div class="card">
-  <h2>Saldo de aportes</h2>
-  <p class="hint">Resultado de los pagos compartidos: cuánto puso cada socio de más o de menos
-    respecto de lo que le correspondía por su %.</p>
-  <div class="stack">
-    {% for ps in aportes.partners %}
-    <div class="split-row">
-      <div><strong>{{ ps.name }}</strong> <span class="muted small">({{ ps.pct_share }}%)</span></div>
-      <div style="font-weight:700;color:{{ 'var(--ok)' if ps.balance >= 0 else 'var(--danger)' }}">
-        {{ ps.balance | ars }}
+  <h2>Saldo entre socios</h2>
+  <p class="hint">Deuda real neteada: aportes de los pagos compartidos + pasadas a Colón.
+    Las dos monedas van por separado (no se convierten).</p>
+  {% if saldo.ars or saldo.uyu %}
+  <div class="control control-ok" style="margin-top:4px">
+    <div style="grid-column:1/-1;text-align:center">
+      {% if saldo.ars %}
+      <div style="font-weight:800;font-size:1.05rem">
+        {{ saldo.ars.deudor }} le debe {{ saldo.ars.monto | ars }} a {{ saldo.ars.acreedor }}
       </div>
+      {% endif %}
+      {% if saldo.uyu %}
+      <div style="font-weight:800;font-size:1.05rem;margin-top:4px">
+        {{ saldo.uyu.deudor }} le debe {{ saldo.uyu.monto | moneda('UYU') }} a {{ saldo.uyu.acreedor }}
+      </div>
+      {% endif %}
     </div>
-    {% endfor %}
   </div>
-  {% if aportes.deudor %}
-  <div class="control control-ok" style="margin-top:12px">
-    <div style="grid-column:1/-1;text-align:center;font-weight:700">
-      {{ aportes.deudor }} le debe {{ aportes.monto | ars }} a {{ aportes.acreedor }}
-    </div>
-  </div>
+  <p class="hint" style="margin-top:8px">
+    Pesos: aportes {{ saldo.aportes_ars | ars }} · pasadas {{ saldo.pase_ars | ars }}
+    {% if saldo.pase_uyu %} — Uruguayos: pasadas {{ saldo.pase_uyu | moneda('UYU') }}{% endif %}
+    (en positivo = {{ saldo.socio_b }} le debe a {{ saldo.socio_a }}).
+  </p>
   {% else %}
-  <p class="small muted" style="margin-top:10px">Están a mano.</p>
+  <p class="small muted" style="margin-top:6px">Están a mano.</p>
   {% endif %}
   <p class="hint">Los movimientos "entre socios" de abajo son comprobantes aparte y no se descuentan de este saldo.</p>
 </div>
 
 <div class="card">
   <div class="section-head"><h2>Pases a Colón</h2></div>
-  <p class="hint">Peaje del puente ({{ pase.monto | ars }}, ida + vuelta). El que toca el botón lo paga:
-    su parte queda saldada y la del otro socio queda pendiente en el saldo de arriba.</p>
-  <form method="post" action="/socios/pase-colon"
+  <p class="hint">Peaje del puente (ida + vuelta). El que lo registra lo pagó: su parte queda
+    saldada y la del otro socio queda pendiente en el saldo de arriba.
+    Poné lo que pagaste en cada moneda (dejá 0 la que no usaste).</p>
+  <form method="post" action="/socios/pase-colon" class="stack"
         data-confirm="¿Registrar un pase a Colón pagado por vos ({{ partner.name }})?">
-    <button class="btn btn-primary btn-block" type="submit">Registrar pase Colón — pagué yo</button>
+    <div class="grid-2">
+      <div class="field">
+        <label for="pase-ars">Pesos argentinos</label>
+        <input id="pase-ars" name="ars" inputmode="decimal" value="0" placeholder="{{ pase.prefill_ars }}">
+      </div>
+      <div class="field">
+        <label for="pase-uyu">Pesos uruguayos</label>
+        <input id="pase-uyu" name="uyu" inputmode="decimal" value="{{ pase.prefill_uyu }}">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Registrar pase — pagué yo</button>
   </form>
-  {% if pase.count_total %}
+  {% if pase.count %}
   <p class="small muted" style="margin-top:10px">
-    Este mes: {{ pase.count_mes }} {{ 'pase' if pase.count_mes == 1 else 'pases' }}
-    ({{ pase.total_mes | ars }}).
+    Este mes: {{ pase.count_mes }} {{ 'pase' if pase.count_mes == 1 else 'pases' }}.
+    Total: {{ pase.count }} · {{ pase.total_ars | ars }}{% if pase.total_uyu %} + {{ pase.total_uyu | moneda('UYU') }}{% endif %}.
     {% if pase.ultima %}Última: {{ pase.ultima | fecha }}.{% endif %}
-    Total registrados: {{ pase.count_total }}.
   </p>
+  <div class="stack" style="margin-top:6px">
+    {% for r in pase.recientes %}
+    <div class="split-row">
+      <div class="small">
+        {{ r.date | fecha }} · pagó {{ r.paid_by.name }} ·
+        {% if r.amount_ars %}{{ r.amount_ars | ars }}{% endif %}{% if r.amount_ars and r.amount_uyu %} + {% endif %}{% if r.amount_uyu %}{{ r.amount_uyu | moneda('UYU') }}{% endif %}
+      </div>
+      {% if partner.is_owner %}
+      <form method="post" action="/socios/pase-colon/{{ r.id }}/eliminar" data-confirm="¿Eliminar este pase?">
+        <button class="btn btn-danger btn-sm" type="submit">✕</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
   {% endif %}
 </div>
 

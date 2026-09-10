@@ -14,17 +14,14 @@ PAYMENT_CATEGORIES = [
     ("impuesto", "Impuesto"),
     ("logistica", "Logística"),
     ("comision", "Comisión"),
-    ("pase_colon", "Pase Colón"),
     ("otro", "Otro"),
 ]
 
-# Categorías que la app necesita que existan siempre (se re-crean en cada arranque
-# si el usuario las borró). code -> label.
-SYSTEM_CATEGORIES = [("pase_colon", "Pase Colón")]
-
 # Peaje del puente internacional a Colón, ida + vuelta. Un socio lo paga y se
-# reparte 35/65. Cambiá este valor cuando el puente actualice la tarifa.
+# reparte según el % de cada uno. Prefill del formulario — cambialo cuando el
+# puente actualice la tarifa.
 PASE_COLON_ARS = Decimal("4000")
+PASE_COLON_UYU = Decimal("600")
 
 PAYMENT_STATUS = [
     ("pagado", "Pagado"),

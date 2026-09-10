@@ -1,4 +1,4 @@
-"""Botón 'Registrar pase Colón' en el panel de socios."""
+"""Pases a Colón: registro multimoneda y saldo entre socios."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
 from app.main import app
-from app.services.summary import build_summary
+from app.models import PaseColon
+from app.services.pases import pase_saldo
+from app.services.payments import active_partners
 
 _SEBAS_PW = "sebas12345"
 
@@ -32,64 +34,66 @@ def sebas_client():
     return c
 
 
-def _balances() -> dict[str, Decimal]:
+def _saldo() -> tuple[Decimal, Decimal]:
+    """(net_ars, net_uyu) — positivo = socio B (65%) le debe al socio A (35%)."""
     with SessionLocal() as db:
-        s = build_summary(db)
-        return {p.name: p.balance for p in s.partners}
+        s = pase_saldo(db, active_partners(db))
+        return s.net_ars, s.net_uyu
 
 
-def _names() -> tuple[str, str]:
-    b = _balances()
-    jairo = next(n for n in b if n.lower().startswith("jairo"))
-    sebas = next(n for n in b if "seba" in n.lower())
-    return jairo, sebas
-
-
-def test_pase_colon_button_visible(auth_client):
+def test_button_and_form_visible(auth_client):
     page = auth_client.get("/socios").text
-    assert "Registrar pase Colón" in page
-    assert "/socios/pase-colon" in page
-    assert "Saldo de aportes" in page
+    assert "Registrar pase" in page
+    assert 'name="ars"' in page and 'name="uyu"' in page
+    assert "Saldo entre socios" in page
 
 
-def test_pase_colon_split_35_65(auth_client):
-    jairo, sebas = _names()
-    before = _balances()
-    r = auth_client.post("/socios/pase-colon", follow_redirects=True)
+def test_pase_uyu_split(auth_client):
+    ars0, uyu0 = _saldo()
+    r = auth_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)
     assert "Pase Colón registrado" in r.text
-    after = _balances()
-    # Jairo pagó 4000, le correspondía 1400 (35%) -> +2600 ; Sebastián -2600 (65%)
-    assert after[jairo] - before[jairo] == Decimal("2600.00")
-    assert after[sebas] - before[sebas] == Decimal("-2600.00")
-
-    # aparece en pagos, no en el panel de la contadora (no facturable)
-    assert "Pase Colón" in auth_client.get("/pagos", params={"q": "Pase Colón"}).text
+    ars1, uyu1 = _saldo()
+    # Jairo (35%) pagó 600 UYU -> Sebastián (65%) le debe 390 UYU ; ARS sin cambio
+    assert uyu1 - uyu0 == Decimal("390.00")
+    assert ars1 - ars0 == Decimal("0")
 
 
-def test_pase_colon_nets_between_partners(auth_client, sebas_client):
-    jairo, sebas = _names()
-    before = _balances()
-    auth_client.post("/socios/pase-colon", follow_redirects=True)   # paga Jairo
-    sebas_client.post("/socios/pase-colon", follow_redirects=True)  # paga Sebastián
-    after = _balances()
-    # neto: Jairo +2600 -1400 = +1200 ; Sebastián -1200
-    assert after[jairo] - before[jairo] == Decimal("1200.00")
-    assert after[sebas] - before[sebas] == Decimal("-1200.00")
-    assert auth_client.get("/socios").status_code == 200
+def test_pase_ars_split(auth_client):
+    ars0, uyu0 = _saldo()
+    auth_client.post("/socios/pase-colon", data={"ars": "4000", "uyu": "0"}, follow_redirects=True)
+    ars1, uyu1 = _saldo()
+    assert ars1 - ars0 == Decimal("2600.00")   # 65% de 4000
+    assert uyu1 - uyu0 == Decimal("0")
 
 
-def test_pase_colon_not_visible_to_accountant(auth_client):
-    auth_client.post("/socios/pase-colon", follow_redirects=True)
-    auth_client.post(
-        "/socios/contadora",
-        data={"name": "Conta Pase", "username": "contapase", "password": "inicial123"},
-        follow_redirects=True,
-    )
-    c = TestClient(app)
-    rr = c.post("/contadora/login", data={"username": "contapase", "password": "inicial123"},
-               follow_redirects=False)
-    if rr.headers["location"] == "/contadora/password":
-        c.post("/contadora/password",
-               data={"new_password": "nueva12345", "confirm_password": "nueva12345"},
-               follow_redirects=True)
-    assert "Pase Colón" not in c.get("/contadora").text
+def test_pase_nets_between_partners(auth_client, sebas_client):
+    ars0, uyu0 = _saldo()
+    auth_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)   # Jairo
+    sebas_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)  # Sebastián
+    ars1, uyu1 = _saldo()
+    # Jairo: Seba debe 390 ; Sebastián: Jairo debe 210 -> neto Seba debe 180
+    assert uyu1 - uyu0 == Decimal("180.00")
+    assert ars1 - ars0 == Decimal("0")
+
+
+def test_pase_requires_amount(auth_client):
+    r = auth_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "0"}, follow_redirects=True)
+    assert "monto del pase" in r.text.lower()
+
+
+def test_pase_owner_can_delete(auth_client):
+    from sqlalchemy import select
+
+    auth_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)
+    with SessionLocal() as db:
+        pid = db.scalar(select(PaseColon.id).order_by(PaseColon.id.desc()).limit(1))
+    r = auth_client.post(f"/socios/pase-colon/{pid}/eliminar", follow_redirects=True)
+    assert "eliminado" in r.text.lower()
+
+
+def test_saldo_combines_aportes_and_pases(auth_client):
+    """El saldo entre socios de /socios netea aportes de pagos + pasadas."""
+    auth_client.post("/socios/pase-colon", data={"ars": "4000", "uyu": "0"}, follow_redirects=True)
+    page = auth_client.get("/socios").text
+    assert "Saldo entre socios" in page
+    assert "le debe" in page  # hay una deuda (al menos por la pasada recién cargada)
