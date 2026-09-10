@@ -73,23 +73,52 @@ def test_payment_iva_net_plus_iva_cannot_exceed_total(auth_client):
     assert "superar el total" in r.text.lower()
 
 
+def _sale(client, **over):
+    data = {
+        "date": "2026-09-11", "customer": "Cliente venta", "channel": "mayorista",
+        "payment_method": "transferencia", "status": "cobrado",
+        "item_name_0": "Señuelo", "item_qty_0": "1", "item_price_0": "12100",
+    }
+    data.update(over)
+    r = client.post("/ventas", data=data, follow_redirects=True)
+    assert r.status_code == 200
+    return r
+
+
+def test_sale_defaults_to_21_percent_vat(auth_client):
+    # sin ningún campo de IVA: por defecto 21%, neto = total / 1,21
+    _sale(auth_client, customer="Consumidor final X", item_price_0="12100")
+    sid = re.search(
+        r"/ventas/(\d+)", auth_client.get("/ventas").text
+    ).group(1)
+    page = auth_client.get(f"/ventas/{sid}").text
+    assert "10.000,00" in page   # neto gravado
+    assert "2.100,00" in page    # IVA
+
+
+def test_sale_vat_exento(auth_client):
+    _sale(auth_client, customer="Venta exenta", vat_rate="0", item_price_0="5000")
+    sid = re.search(r"/ventas/(\d+)", auth_client.get("/ventas").text).group(1)
+    page = auth_client.get(f"/ventas/{sid}").text
+    assert "exento" in page.lower()
+
+
+def test_sale_manual_iva_other_rate(auth_client):
+    # alícuota 10,5%: neto = 11050/1.105 = 10000, IVA = 1050
+    _sale(auth_client, customer="Venta 10.5", vat_rate="10.5", item_price_0="11050")
+    sid = re.search(r"/ventas/(\d+)", auth_client.get("/ventas").text).group(1)
+    page = auth_client.get(f"/ventas/{sid}").text
+    assert "10.000,00" in page
+    assert "1.050,00" in page
+
+
 def test_iva_panel_position(auth_client):
     # crédito: pago con IVA 2100
     _pay(auth_client, concept="Credito IVA test", vat_discrimina="1", vat_rate="21")
-    # débito: venta con IVA
-    auth_client.post(
-        "/ventas",
-        data={
-            "date": "2026-09-11", "customer": "Cliente IVA", "channel": "mayorista",
-            "payment_method": "transferencia", "status": "cobrado",
-            "vat_discrimina": "1", "vat_rate": "21",
-            "item_name_0": "Señuelo", "item_qty_0": "1", "item_price_0": "6050",
-        },
-        follow_redirects=True,
-    )
+    # débito: venta con IVA 21% (por defecto) sobre 6050 -> 1050
+    _sale(auth_client, customer="Cliente IVA panel", item_price_0="6050")
     page = auth_client.get("/reporte", params={"mes": "2026-09"}).text
     assert "IVA" in page
-    # venta 6050 -> IVA débito 1050 ; crédito 2100 (al menos) -> posición a favor
     assert "IVA a favor" in page
 
 

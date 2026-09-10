@@ -1,7 +1,7 @@
 """IVA: discriminación en pagos/ventas y posición crédito vs débito.
 
-- Crédito fiscal: IVA de las facturas A que recibimos (pagos).
-- Débito fiscal: IVA de las facturas A que emitimos (ventas).
+- Crédito fiscal: IVA de las facturas A que recibimos (pagos que lo discriminan).
+- Débito fiscal: IVA de las ventas (toda venta lleva IVA salvo que se marque exenta).
 - Posición = crédito − débito. Positiva = a favor; negativa = a pagar.
 """
 
@@ -20,6 +20,8 @@ from app.services.periods import recent_months
 
 # Alícuotas de IVA vigentes en Argentina.
 VAT_RATES: list[tuple[str, str]] = [("21", "21%"), ("10.5", "10,5%"), ("27", "27%")]
+# En ventas además se puede marcar una operación exenta / sin IVA.
+SALE_VAT_RATES: list[tuple[str, str]] = VAT_RATES + [("0", "Sin IVA / exento")]
 DEFAULT_VAT_RATE = Decimal("21")
 
 

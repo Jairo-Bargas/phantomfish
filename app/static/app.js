@@ -330,15 +330,13 @@
     if ($$(".item-row", box).length === 0 && addBtn) addBtn.click();
   }
 
-  /* ---------- venta: IVA discriminado ---------- */
+  /* ---------- venta: IVA (siempre, 21% por defecto) ---------- */
   const saleForm = $("#sale-form");
   if (saleForm) initSaleVat(saleForm);
 
   function initSaleVat(form) {
-    const chk = $("#vat-discrimina", form);
-    if (!chk) return;
-    const box = $("#vat-box", form);
     const rateSel = $("#vat_rate", form);
+    if (!rateSel) return;
     const netoInp = $("#vat_neto", form);
     const ivaInp = $("#vat_iva", form);
     const sumEl = $("#vat-sum", form);
@@ -358,8 +356,8 @@
       return round2(t);
     }
     function ratePct() {
-      const r = rateSel ? parseNum(rateSel.value) : 21;
-      return r > 0 ? r : 21;
+      const r = parseNum(rateSel.value);
+      return r >= 0 ? r : 21;
     }
     function userChanged(inp, auto) {
       const v = (inp.value || "").trim();
@@ -369,7 +367,7 @@
       const total = saleTotal();
       if (!(total > 0)) return;
       const r = ratePct();
-      const iva = round2(total - total / (1 + r / 100));
+      const iva = r > 0 ? round2(total - total / (1 + r / 100)) : 0;
       const neto = round2(total - iva);
       if (netoInp && !userChanged(netoInp, autoNeto)) {
         netoInp.value = neto.toFixed(2);
@@ -389,19 +387,15 @@
       if (totalEl) totalEl.textContent = fmtARS(total);
     }
     function sync() {
-      if (box) box.hidden = !chk.checked;
-      if (!chk.checked) return;
       prefill();
       summary();
     }
-    chk.addEventListener("change", sync);
-    if (rateSel)
-      rateSel.addEventListener("change", () => {
-        if (netoInp) netoInp.value = "";
-        if (ivaInp) ivaInp.value = "";
-        autoNeto = autoIva = "";
-        sync();
-      });
+    rateSel.addEventListener("change", () => {
+      if (netoInp) netoInp.value = "";
+      if (ivaInp) ivaInp.value = "";
+      autoNeto = autoIva = "";
+      sync();
+    });
     [netoInp, ivaInp].forEach((el) => el && el.addEventListener("input", summary));
     if (itemsBox) itemsBox.addEventListener("input", sync);
     sync();

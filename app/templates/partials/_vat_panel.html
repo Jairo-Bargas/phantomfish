@@ -1,8 +1,8 @@
 {# Espera: vat_period, vat_total, vat_months, titulo #}
 <div class="card">
   <div class="section-head"><h2>IVA</h2></div>
-  <p class="hint">Crédito = IVA de facturas A recibidas (pagos). Débito = IVA de facturas A emitidas (ventas).
-    Positivo = a favor; negativo = a pagar.</p>
+  <p class="hint">Crédito = IVA de las facturas A que recibimos (pagos). Débito = IVA de las ventas.
+    Posición = crédito − débito: positiva = a favor; negativa = a pagar.</p>
 
   <div class="tiles" style="margin-bottom:12px">
     <div class="tile"><div class="k">Crédito · {{ titulo }}</div><div class="v">{{ vat_period.credito | ars }}</div></div>

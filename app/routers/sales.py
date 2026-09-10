@@ -46,14 +46,20 @@ def _num(value: str, field: str, quant: Decimal = Decimal("0.01")) -> Decimal:
 def _apply_vat(sale: Sale, form: dict) -> None:
     """Fija sale.vat_amount / vat_net / vat_rate según el form y el total actual.
 
-    Neto e IVA se cargan tal cual la factura; si no se tocan, se calculan del
-    total con la alícuota. El resto del total son percepciones / otros conceptos.
+    Toda venta lleva IVA (21% por defecto). El neto sale de dividir el total por
+    (1 + alícuota/100) y el IVA es la diferencia; se pueden corregir a mano para
+    otras alícuotas o percepciones. Alícuota 0 = operación exenta / sin IVA.
     """
-    if not form.get("vat_discrimina"):
-        sale.vat_amount = sale.vat_net = sale.vat_rate = None
-        return
-    rate_pct = parse_rate(form.get("vat_rate")) or DEFAULT_VAT_RATE
     total = sale.total_ars
+    rate_raw = (form.get("vat_rate") or "21").strip().replace(",", ".")
+
+    if rate_raw in ("0", "0.0", "exento", ""):
+        sale.vat_rate = ZERO
+        sale.vat_amount = ZERO
+        sale.vat_net = money(total)
+        return
+
+    rate_pct = parse_rate(rate_raw) or DEFAULT_VAT_RATE
     net = _num(form.get("vat_neto", ""), "Neto gravado")
     iva = _num(form.get("vat_iva", ""), "IVA")
     if net <= ZERO and iva <= ZERO:
@@ -125,6 +131,7 @@ async def new_sale(
                 "channel": "mayorista",
                 "payment_method": "transferencia",
                 "status": "cobrado",
+                "vat_rate": "21",
             },
             "items": [],
         },
@@ -256,7 +263,6 @@ async def edit_sale(
                 "payment_method": sale.payment_method,
                 "status": sale.status,
                 "invoice_number": sale.invoice_number or "",
-                "vat_discrimina": "1" if sale.vat_amount is not None else "",
                 "vat_rate": (f"{sale.vat_rate.normalize():f}" if sale.vat_rate is not None else "21"),
                 "vat_neto": (f"{sale.net_amount:.2f}" if sale.vat_amount is not None else ""),
                 "vat_iva": (f"{sale.vat_amount:.2f}" if sale.vat_amount is not None else ""),

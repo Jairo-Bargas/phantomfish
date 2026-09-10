@@ -99,22 +99,16 @@
   </div>
 
   <div class="card">
-    <h2>IVA (opcional)</h2>
-    <label class="check">
-      <input type="checkbox" id="vat-discrimina" name="vat_discrimina" value="1"
-             {{ 'checked' if form.vat_discrimina }}>
-      <span>Esta venta lleva factura A (discrimina IVA)
-        <div class="hint">El IVA cuenta como débito fiscal en el panel de IVA.</div>
-      </span>
-    </label>
-    <div id="vat-box" hidden>
+    <h2>IVA</h2>
+    <div id="vat-box">
       <div class="field">
         <label for="vat_rate">Alícuota</label>
         <select id="vat_rate" name="vat_rate">
-          {% for code, label in VAT_RATES %}
+          {% for code, label in SALE_VAT_RATES %}
             <option value="{{ code }}" {{ 'selected' if (form.vat_rate or '21') == code }}>{{ label }}</option>
           {% endfor %}
         </select>
+        <div class="hint">Por defecto 21%. Elegí otra alícuota o "Sin IVA" si corresponde.</div>
       </div>
       <div class="grid-2">
         <div class="field">
@@ -126,7 +120,8 @@
           <input id="vat_iva" name="vat_iva" inputmode="decimal" value="{{ form.vat_iva or '' }}">
         </div>
       </div>
-      <div class="hint">Se prellenan del total al 21%. Copiá los valores de la factura si difieren.</div>
+      <div class="hint">Se calculan del total (neto = total ÷ 1,21). Podés corregirlos a mano
+        para percepciones u otra alícuota; la diferencia queda como "otros conceptos".</div>
       <div class="subpanel">
         <div class="kv-row"><span class="k">Neto + IVA</span><span class="v" id="vat-sum">—</span></div>
         <div class="kv-row"><span class="k">Otros conceptos</span><span class="v" id="vat-other">—</span></div>
