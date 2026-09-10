@@ -16,7 +16,9 @@ from app.constants import label_for
 from app.money import ZERO, money
 from app.models import Partner, Payment, Purchase, Sale, Settlement
 from app.services.categories import label_map
-from app.services.summary import build_summary
+from app.services.pases import pase_saldo
+from app.services.payments import active_partners
+from app.services.summary import build_summary, socios_saldo
 from app.services.vat import vat_totals
 
 HEADER_FILL = PatternFill("solid", fgColor="1F2937")
@@ -304,6 +306,30 @@ def _sheet_resumen(wb: Workbook, db: Session, partners: list[Partner], date_from
     r += 2
     ws.cell(row=r, column=2, value="Las devoluciones entre socios se registran aparte "
             "(hoja Movimientos_Socios) — no se descuentan acá.").font = SUBTITLE_FONT
+
+    r += 3
+    ws.cell(row=r, column=2, value="SALDO ENTRE SOCIOS (al día de hoy)").font = TOTAL_FONT
+    saldo = socios_saldo(db)
+    ps = pase_saldo(db, active_partners(db))
+    for text_label, val in (
+        ("Neto de aportes de pagos (ARS)", _dec(saldo.aportes_ars)),
+        ("Neto de pasadas a Colón (ARS)", _dec(saldo.pase_ars)),
+        ("Neto de pasadas a Colón (UYU)", _dec(saldo.pase_uyu)),
+        (f"Total pasadas registradas: {ps.count}", None),
+    ):
+        r += 1
+        ws.cell(row=r, column=2, value=text_label)
+        if val is not None:
+            ws.cell(row=r, column=4, value=val).number_format = MONEY_FMT
+    r += 1
+    partes = []
+    if saldo.ars:
+        partes.append(f"{saldo.ars['deudor']} le debe $ {saldo.ars['monto']:.2f} a {saldo.ars['acreedor']}")
+    if saldo.uyu:
+        partes.append(f"{saldo.uyu['deudor']} le debe $U {saldo.uyu['monto']:.2f} a {saldo.uyu['acreedor']}")
+    c = ws.cell(row=r, column=2, value=" · ".join(partes) if partes else "Están a mano.")
+    c.font = TOTAL_FONT
+    c.fill = OK_FILL
 
     r += 3
     ws.cell(row=r, column=2, value="RESULTADO DEL PERÍODO").font = TOTAL_FONT
