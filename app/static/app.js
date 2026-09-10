@@ -92,6 +92,13 @@
         rate.value = (cur === "UYU" ? form.dataset.rateUyu : form.dataset.rateUsd) || "";
       }
     }
+    const paidModeRadios = $$("[name=paid_mode]", form);
+    const splitDetail = $("#split-detail", form);
+    function paidBy() {
+      const r = paidModeRadios.find((x) => x.checked);
+      const v = r ? r.value : "";
+      return v.indexOf("by_") === 0 ? v.slice(3) : null; // id del socio, o null
+    }
     function isAuto() {
       const checked = splitAuto.find((x) => x.checked);
       return !checked || checked.value === "auto";
@@ -110,12 +117,30 @@
         inp.value = share.toFixed(2);
       });
     }
+    function applyPaidBy(payer) {
+      const t = totalArs();
+      contribInputs.forEach((inp) => {
+        inp.value = (inp.dataset.contrib === payer ? t : 0).toFixed(2);
+        inp.readOnly = true;
+      });
+    }
     function refreshContribControls() {
       syncCurrencyUI();
-      const auto = isAuto();
-      contribInputs.forEach((inp) => (inp.readOnly = auto));
-      if (auto) applyAutoSplit();
+      const payer = paidBy();
+      if (splitDetail) splitDetail.hidden = payer !== null;
+      if (payer !== null) {
+        applyPaidBy(payer);
+      } else {
+        const auto = isAuto();
+        contribInputs.forEach((inp) => (inp.readOnly = auto));
+        if (auto) applyAutoSplit();
+      }
       updateControl();
+    }
+    function partnerName(inp) {
+      const row = inp.closest(".split-row");
+      const s = row && row.querySelector("strong");
+      return s ? s.textContent.trim() : "el otro socio";
     }
     function updateControl() {
       const t = totalArs();
@@ -126,6 +151,29 @@
       if (outUsd) outUsd.textContent = fmtUSD(totalUsd());
       if (sumEl) sumEl.textContent = fmtARS(sum);
       if (totalEl) totalEl.textContent = fmtARS(t);
+
+      const payer = paidBy();
+      if (payer !== null) {
+        let otherName = "el otro socio";
+        let otherShould = 0;
+        contribInputs.forEach((inp) => {
+          if (inp.dataset.contrib !== payer) {
+            otherName = partnerName(inp);
+            otherShould = round2((t * (parseFloat(pcts[inp.dataset.contrib]) || 0)) / 100);
+          }
+        });
+        if (box) {
+          box.classList.add("control-ok");
+          box.classList.remove("control-bad");
+        }
+        if (statusEl)
+          statusEl.textContent =
+            otherShould > 0
+              ? otherName + " te queda debiendo " + fmtARS(otherShould)
+              : "Lo pagaste vos";
+        return;
+      }
+
       const ok = Math.abs(t - sum) < 0.01;
       if (box) {
         box.classList.toggle("control-ok", ok);
@@ -150,6 +198,7 @@
       })
     );
     splitAuto.forEach((el) => el.addEventListener("change", refreshContribControls));
+    paidModeRadios.forEach((el) => el.addEventListener("change", refreshContribControls));
     contribInputs.forEach((el) => el.addEventListener("input", updateControl));
 
     /* ---- tipo de gasto: personal esconde el reparto 35/65 ---- */
@@ -400,6 +449,19 @@
     if (itemsBox) itemsBox.addEventListener("input", sync);
     sync();
   }
+
+  /* ---------- detalle de pago: form "quién pagó" (mostrar/ocultar montos) ---------- */
+  $$('form[action$="/aportes"]').forEach((form) => {
+    const detail = $("#split-detail", form);
+    if (!detail) return;
+    const radios = $$('[name=paid_mode]', form);
+    const sync = () => {
+      const r = radios.find((x) => x.checked);
+      detail.hidden = !!(r && r.value.indexOf("by_") === 0);
+    };
+    radios.forEach((el) => el.addEventListener("change", sync));
+    sync();
+  });
 
   /* ---------- service worker (instalable) ---------- */
   if ("serviceWorker" in navigator) {

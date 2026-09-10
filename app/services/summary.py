@@ -9,7 +9,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.money import ZERO, dsum, money, to_decimal
+from app.money import CENT, ZERO, dsum, money, to_decimal
 from app.models import Partner, Payment, Sale
 
 
@@ -163,6 +163,36 @@ class SociosSaldo:
         return self.ars is not None or self.uyu is not None
 
 
+def aportes_debt(db: Session, partners: list[Partner]) -> Decimal:
+    """Deuda entre socios por los pagos compartidos, en ARS.
+
+    + => el segundo socio (por id) le debe al primero.
+    Solo cuentan los pagos donde la suma de aportes cuadra con el total (si no
+    se sabe quién puso qué, no se puede atribuir una deuda). Un pago repartido
+    35/65 no genera deuda; uno pagado 100% por un socio sí (el otro le debe su %).
+    """
+    if len(partners) != 2:
+        return ZERO
+    a = partners[0]
+    a_pct = to_decimal(a.pct_share, Decimal("0.01")) / Decimal(100)
+    rows = db.scalars(
+        select(Payment)
+        .options(selectinload(Payment.contributions))
+        .where(Payment.expense_type != "personal")
+    )
+    net = ZERO
+    for pay in rows:
+        total = money(pay.amount_ars)
+        contributed = money(sum((c.amount_ars for c in pay.contributions), ZERO))
+        if abs(contributed - total) > CENT:
+            continue  # pago sin repartir del todo -> no se atribuye
+        a_put = money(
+            sum((c.amount_ars for c in pay.contributions if c.partner_id == a.id), ZERO)
+        )
+        net += a_put - money(total * a_pct)
+    return money(net)
+
+
 def socios_saldo(db: Session) -> SociosSaldo:
     """Saldo total entre socios: aportes de pagos + pasadas Colón, sin fecha."""
     from app.services.pases import pase_saldo
@@ -174,10 +204,7 @@ def socios_saldo(db: Session) -> SociosSaldo:
         return s
     s.socio_a, s.socio_b = partners[0].name, partners[1].name
 
-    summ = build_summary(db)
-    by_id = {p.partner_id: p for p in summ.partners}
-    s.aportes_ars = by_id[partners[0].id].balance if partners[0].id in by_id else ZERO
-
+    s.aportes_ars = aportes_debt(db, partners)
     ps = pase_saldo(db, partners)
     s.pase_ars, s.pase_uyu = ps.net_ars, ps.net_uyu
     s.net_ars = money(s.aportes_ars + ps.net_ars)

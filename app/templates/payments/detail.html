@@ -66,48 +66,48 @@
 </div>
 {% else %}
 <div class="card">
-  <h2>Control</h2>
-  <div class="control {{ 'control-ok' if payment.control_ok else 'control-bad' }}">
-    <div><div class="k">Total del pago</div><div class="v">{{ payment.amount_ars | ars }}</div></div>
-    <div><div class="k">Suma de aportes</div><div class="v">{{ payment.contributed_total | ars }}</div></div>
-    <div class="control-status">
-      {% if payment.control_ok %}✓ Los aportes coinciden con el total
-      {% else %}⚠ Diferencia: {{ payment.control_difference | ars }}{% endif %}
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="section-head"><h2>Aportes</h2></div>
-  <form method="post" action="/pagos/{{ payment.id }}/aportes" class="stack">
-    <div class="field">
-      <div class="pill-toggle">
-        <label><input type="radio" name="split_mode" value="custom" checked><span>Editar montos</span></label>
-        <label><input type="radio" name="split_mode" value="auto"><span>Volver a 35/65</span></label>
+  <div class="section-head"><h2>¿Quién lo pagó?</h2></div>
+  {% if payment.paid_by %}
+    {% for c in payment.contributions if c.partner_id != payment.paid_by_partner_id %}
+    <div class="control control-ok">
+      <div style="grid-column:1/-1;text-align:center;font-weight:700">
+        Lo pagó {{ payment.paid_by.name }}.
+        {% if c.should_contribute > 0.5 %}{{ c.partner.name }} le queda debiendo {{ c.should_contribute | ars }}{% else %}Sin deuda.{% endif %}
       </div>
-    </div>
-    {% for c in payment.contributions %}
-    <div class="split-row">
-      <div>
-        <strong>{{ c.partner.name }}</strong>
-        <span class="muted small">({{ c.partner.pct_share }}%)</span>
-        <div class="muted small">
-          Le correspondía {{ c.should_contribute | ars }} · aportó {{ c.amount_ars | ars }}
-        </div>
-        {% if c.contribution_diff|abs > 0.01 %}
-          <div class="small" style="color:{{ 'var(--warn)' if c.contribution_diff < 0 else 'var(--ok)' }}">
-            {% if c.contribution_diff < 0 %}Puso {{ (-c.contribution_diff) | ars }} de menos
-            {% else %}Puso {{ c.contribution_diff | ars }} de más{% endif %}
-          </div>
-        {% endif %}
-      </div>
-      <input name="contribution_{{ c.partner_id }}" inputmode="decimal"
-             value="{{ '%.2f' % c.amount_ars }}">
     </div>
     {% endfor %}
-    <p class="hint">Si un socio puso de más, la diferencia queda a favor suyo en
-      <a href="/socios">Socios</a> (se salda con un movimiento entre socios).</p>
-    <button class="btn btn-primary btn-sm btn-block" type="submit">Guardar aportes</button>
+  {% else %}
+    <p class="small muted">Cada socio puso su parte
+      ({% for c in payment.contributions %}{{ c.partner.name }} {{ c.amount_ars | ars }}{% if not loop.last %} · {% endif %}{% endfor %}).</p>
+    {% if not payment.control_ok %}
+    <div class="control control-bad">
+      <div class="control-status">⚠ Faltan {{ payment.control_difference | abs | ars }} sin repartir. Elegí quién lo pagó abajo.</div>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <form method="post" action="/pagos/{{ payment.id }}/aportes" class="stack" style="margin-top:12px">
+    <div class="pill-toggle pill-toggle-3">
+      {% for p in partners %}
+      <label><input type="radio" name="paid_mode" value="by_{{ p.id }}"
+             {{ 'checked' if payment.paid_by_partner_id == p.id }}><span>{{ p.name }}</span></label>
+      {% endfor %}
+      <label><input type="radio" name="paid_mode" value="split"
+             {{ 'checked' if not payment.paid_by_partner_id }}><span>Entre los dos</span></label>
+    </div>
+    <div id="split-detail" {{ 'hidden' if payment.paid_by_partner_id }}>
+      <div class="pill-toggle" style="margin-top:6px">
+        <label><input type="radio" name="split_mode" value="custom" checked><span>Montos exactos</span></label>
+        <label><input type="radio" name="split_mode" value="auto"><span>35/65 automático</span></label>
+      </div>
+      {% for c in payment.contributions %}
+      <div class="split-row">
+        <div><strong>{{ c.partner.name }}</strong> <span class="muted small">({{ c.partner.pct_share }}%)</span></div>
+        <input name="contribution_{{ c.partner_id }}" inputmode="decimal" value="{{ '%.2f' % c.amount_ars }}">
+      </div>
+      {% endfor %}
+    </div>
+    <button class="btn btn-primary btn-sm btn-block" type="submit">Guardar</button>
   </form>
 </div>
 {% endif %}

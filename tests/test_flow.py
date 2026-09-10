@@ -35,7 +35,7 @@ def test_create_payment_auto_split_and_control(auth_client):
     assert "1.300.000" in body
     assert "455.000" in body
     assert "845.000" in body
-    assert "coinciden con el total" in body
+    assert "Cada socio puso su parte" in body
 
 
 def test_create_payment_custom_split_mismatch_warns(auth_client):

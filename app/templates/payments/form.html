@@ -184,23 +184,34 @@
   </div>
 
   <div class="card" id="aportes-card">
-    <h2>Aportes de los socios</h2>
-    <div class="field">
-      <div class="pill-toggle">
-        <label><input type="radio" name="split_mode" value="auto" checked><span>Automático (35/65)</span></label>
-        <label><input type="radio" name="split_mode" value="custom"><span>Editar montos</span></label>
-      </div>
-      <div class="hint">Automático reparte según el % de cada socio. Elegí "Editar" para una excepción.</div>
-    </div>
-    <div class="stack">
+    <h2>¿Quién lo pagó?</h2>
+    <div class="pill-toggle pill-toggle-3">
       {% for p in partners %}
-      <div class="split-row">
-        <div><strong>{{ p.name }}</strong> <span class="muted small">({{ p.pct_share }}%)</span></div>
-        <input data-contrib="{{ p.id }}" name="contribution_{{ p.id }}" inputmode="decimal"
-               value="{{ contributions[p.id] if contributions[p.id] not in (none, '') else '' }}">
-      </div>
+      <label><input type="radio" name="paid_mode" value="by_{{ p.id }}"
+             {{ 'checked' if form.paid_mode == 'by_' ~ p.id }}><span>{{ p.name }}</span></label>
       {% endfor %}
+      <label><input type="radio" name="paid_mode" value="split"
+             {{ 'checked' if form.paid_mode == 'split' }}><span>Entre los dos</span></label>
     </div>
+    <p class="hint">Lo paga uno y el otro le queda debiendo su parte (según el %).
+      "Entre los dos" = cada uno puso lo suyo, sin deuda.</p>
+
+    <div id="split-detail" hidden>
+      <div class="pill-toggle" style="margin-top:6px">
+        <label><input type="radio" name="split_mode" value="auto" checked><span>35/65 automático</span></label>
+        <label><input type="radio" name="split_mode" value="custom"><span>Montos exactos</span></label>
+      </div>
+      <div class="stack" style="margin-top:8px">
+        {% for p in partners %}
+        <div class="split-row">
+          <div><strong>{{ p.name }}</strong> <span class="muted small">({{ p.pct_share }}%)</span></div>
+          <input data-contrib="{{ p.id }}" name="contribution_{{ p.id }}" inputmode="decimal"
+                 value="{{ contributions[p.id] if contributions[p.id] not in (none, '') else '' }}">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <div id="control-box" class="control control-ok" style="margin-top:12px">
       <div><div class="k">Total del pago</div><div class="v" id="contrib-total">—</div></div>
       <div><div class="k">Suma de aportes</div><div class="v" id="contrib-sum">—</div></div>

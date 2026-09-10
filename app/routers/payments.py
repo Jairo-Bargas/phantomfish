@@ -263,6 +263,7 @@ async def new_payment(
             "order_id": preselect_order,
             "billable": "1",
             "expense_type": "negocio",
+            "paid_mode": f"by_{partner.id}",
         },
         "contributions": {p.id: ZERO for p in partners},
         "pct_by_partner": {str(p.id): str(p.pct_share) for p in partners},
@@ -368,6 +369,12 @@ def _build_payment_from_form(db: Session, form: dict, partner: Partner) -> Payme
         paid_by_id = _resolve_partner_id(db, form.get("paid_by_partner_id"))
         if paid_by_id is None:
             raise ValueError("Elegí qué socio pagó este gasto personal.")
+    else:
+        # negocio: si lo pagó un solo socio, se guarda quién — el otro le debe
+        # su parte. "split" = cada uno puso lo suyo (sin deuda).
+        pm = (form.get("paid_mode") or "").strip()
+        if pm.startswith("by_"):
+            paid_by_id = _resolve_partner_id(db, pm[3:])
 
     vat_amount, vat_rate, vat_net = _vat_from_form(form, amounts.amount_ars)
 
@@ -410,6 +417,12 @@ def _resolve_contributions(
     if payment.expense_type == "personal":
         # 100% al socio que lo pagó; no participa del reparto 35/65.
         return {payment.paid_by_partner_id: money(total_ars)}
+    if payment.paid_by_partner_id:
+        # lo pagó un solo socio: puso el 100%. El otro queda debiendo su parte.
+        return {
+            p.id: (money(total_ars) if p.id == payment.paid_by_partner_id else ZERO)
+            for p in partners
+        }
     mode = form.get("split_mode", "auto")
     if mode == "auto":
         return default_split(db, total_ars)
@@ -458,6 +471,7 @@ async def payment_detail(
             "partner": partner,
             "active_nav": "pagos",
             "payment": payment,
+            "partners": active_partners(db),
             "documents": docs,
         },
         db=db,
@@ -500,6 +514,9 @@ async def edit_payment(
             "billable": "1" if payment.billable else "",
             "expense_type": payment.expense_type,
             "paid_by_partner_id": str(payment.paid_by_partner_id or ""),
+            "paid_mode": (
+                f"by_{payment.paid_by_partner_id}" if payment.paid_by_partner_id else "split"
+            ),
             "vat_discrimina": "1" if payment.vat_amount is not None else "",
             "vat_rate": (f"{payment.vat_rate.normalize():f}" if payment.vat_rate is not None else "21"),
             "vat_neto": (f"{payment.net_amount:.2f}" if payment.vat_amount is not None else ""),
@@ -592,12 +609,20 @@ async def update_contributions(
     form = dict((await request.form()).multi_items())
     partners = active_partners(db)
     before = snapshot(payment)
+    total = payment.amount_ars
+    pm = (form.get("paid_mode") or "").strip()
     try:
-        if form.get("split_mode") == "auto":
-            amounts = default_split(db, payment.amount_ars)
+        if pm.startswith("by_"):
+            payer = _resolve_partner_id(db, pm[3:])
+            payment.paid_by_partner_id = payer
+            amounts = {p.id: (money(total) if p.id == payer else ZERO) for p in partners}
+        elif form.get("split_mode") == "auto":
+            payment.paid_by_partner_id = None
+            amounts = default_split(db, total)
         else:
+            payment.paid_by_partner_id = None
             custom = _contribution_inputs(form, partners)
-            amounts = custom if custom is not None else default_split(db, payment.amount_ars)
+            amounts = custom if custom is not None else default_split(db, total)
     except ValueError as exc:
         flash(request, str(exc), "error")
         return redirect(f"/pagos/{payment.id}")
