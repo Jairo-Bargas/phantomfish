@@ -124,3 +124,62 @@ def build_summary(
 
     summary.partners = list(per_partner.values())
     return summary
+
+
+@dataclass
+class SociosSaldo:
+    """Deuda real neteada entre los dos socios, por moneda (sin conversión).
+
+    ars  = aportes netos de pagos compartidos + pasadas Colón en pesos.
+    uyu  = pasadas Colón en pesos uruguayos.
+    Para cada moneda, `deudor` le debe `monto` a `acreedor` (None si están a mano).
+    """
+
+    socio_a: str = ""   # el de menor id (el que en "aportes" tiene balance + si le deben)
+    socio_b: str = ""
+    aportes_ars: Decimal = ZERO
+    pase_ars: Decimal = ZERO
+    pase_uyu: Decimal = ZERO
+    net_ars: Decimal = ZERO   # + => B le debe a A
+    net_uyu: Decimal = ZERO
+
+    def _dir(self, net: Decimal) -> dict | None:
+        if net > Decimal("0.5"):
+            return {"deudor": self.socio_b, "acreedor": self.socio_a, "monto": net}
+        if net < Decimal("-0.5"):
+            return {"deudor": self.socio_a, "acreedor": self.socio_b, "monto": -net}
+        return None
+
+    @property
+    def ars(self) -> dict | None:
+        return self._dir(self.net_ars)
+
+    @property
+    def uyu(self) -> dict | None:
+        return self._dir(self.net_uyu)
+
+    @property
+    def hay_deuda(self) -> bool:
+        return self.ars is not None or self.uyu is not None
+
+
+def socios_saldo(db: Session) -> SociosSaldo:
+    """Saldo total entre socios: aportes de pagos + pasadas Colón, sin fecha."""
+    from app.services.pases import pase_saldo
+    from app.services.payments import active_partners
+
+    partners = active_partners(db)
+    s = SociosSaldo()
+    if len(partners) != 2:
+        return s
+    s.socio_a, s.socio_b = partners[0].name, partners[1].name
+
+    summ = build_summary(db)
+    by_id = {p.partner_id: p for p in summ.partners}
+    s.aportes_ars = by_id[partners[0].id].balance if partners[0].id in by_id else ZERO
+
+    ps = pase_saldo(db, partners)
+    s.pase_ars, s.pase_uyu = ps.net_ars, ps.net_uyu
+    s.net_ars = money(s.aportes_ars + ps.net_ars)
+    s.net_uyu = money(ps.net_uyu)
+    return s

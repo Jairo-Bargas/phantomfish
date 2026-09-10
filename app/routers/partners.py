@@ -21,7 +21,7 @@ from app.money import ZERO, money
 from app.services.pases import pase_saldo
 from app.services.payments import active_partners
 from app.services.settlements import list_settlements
-from app.services.summary import build_summary
+from app.services.summary import socios_saldo
 from app.web import flash, redirect, render
 
 
@@ -66,33 +66,10 @@ async def list_partners(
         db.scalars(select(AuditLog).order_by(AuditLog.changed_at.desc()).limit(30))
     )
     recent_settlements = list_settlements(db, limit=6)
-    active = active_partners(db)  # ordenados por id: [socio A, socio B]
+    active = active_partners(db)
 
-    # --- saldo entre socios ---
-    # ARS = neto de los aportes de pagos compartidos + neto de las pasadas en pesos.
-    # UYU = neto de las pasadas en pesos uruguayos. Sin conversión entre monedas.
-    summary = build_summary(db)
+    saldo = socios_saldo(db)
     ps = pase_saldo(db, active)
-    aportes_ars = summary.partners[0].balance if summary.partners else ZERO  # + => B le debe a A
-    saldo = {
-        "socio_a": active[0].name if active else "",
-        "socio_b": active[1].name if len(active) > 1 else "",
-        "aportes_ars": money(aportes_ars),
-        "pase_ars": ps.net_ars,
-        "pase_uyu": ps.net_uyu,
-        "net_ars": money(aportes_ars + ps.net_ars),
-        "net_uyu": ps.net_uyu,
-    }
-    # dirección legible por moneda
-    def _dir(net: Decimal):
-        if net > Decimal("0.5"):
-            return {"deudor": saldo["socio_b"], "acreedor": saldo["socio_a"], "monto": net}
-        if net < Decimal("-0.5"):
-            return {"deudor": saldo["socio_a"], "acreedor": saldo["socio_b"], "monto": -net}
-        return None
-    saldo["ars"] = _dir(saldo["net_ars"])
-    saldo["uyu"] = _dir(saldo["net_uyu"])
-
     pases = list(
         db.scalars(select(PaseColon).order_by(PaseColon.date.desc(), PaseColon.id.desc()).limit(8))
     )

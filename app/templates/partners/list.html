@@ -10,29 +10,7 @@
   <h2>Saldo entre socios</h2>
   <p class="hint">Deuda real neteada: aportes de los pagos compartidos + pasadas a Colón.
     Las dos monedas van por separado (no se convierten).</p>
-  {% if saldo.ars or saldo.uyu %}
-  <div class="control control-ok" style="margin-top:4px">
-    <div style="grid-column:1/-1;text-align:center">
-      {% if saldo.ars %}
-      <div style="font-weight:800;font-size:1.05rem">
-        {{ saldo.ars.deudor }} le debe {{ saldo.ars.monto | ars }} a {{ saldo.ars.acreedor }}
-      </div>
-      {% endif %}
-      {% if saldo.uyu %}
-      <div style="font-weight:800;font-size:1.05rem;margin-top:4px">
-        {{ saldo.uyu.deudor }} le debe {{ saldo.uyu.monto | moneda('UYU') }} a {{ saldo.uyu.acreedor }}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  <p class="hint" style="margin-top:8px">
-    Pesos: aportes {{ saldo.aportes_ars | ars }} · pasadas {{ saldo.pase_ars | ars }}
-    {% if saldo.pase_uyu %} — Uruguayos: pasadas {{ saldo.pase_uyu | moneda('UYU') }}{% endif %}
-    (en positivo = {{ saldo.socio_b }} le debe a {{ saldo.socio_a }}).
-  </p>
-  {% else %}
-  <p class="small muted" style="margin-top:6px">Están a mano.</p>
-  {% endif %}
+  {% include "partials/_saldo_socios.html" %}
   <p class="hint">Los movimientos "entre socios" de abajo son comprobantes aparte y no se descuentan de este saldo.</p>
 </div>
 

@@ -12,7 +12,7 @@ from app.auth import get_current_partner
 from app.database import get_db
 from app.models import Partner, Payment, Purchase, Sale, Settlement
 from app.services.periods import last_month, month_bounds, month_label, this_month
-from app.services.summary import build_summary
+from app.services.summary import build_summary, socios_saldo
 from app.web import render
 
 router = APIRouter()
@@ -69,6 +69,7 @@ async def dashboard(
             "partner": partner,
             "active_nav": "dashboard",
             "summary": summary,
+            "saldo": socios_saldo(db),
             "recent_payments": recent_payments,
             "pending_shipments": pending_shipments,
             "counts": counts,

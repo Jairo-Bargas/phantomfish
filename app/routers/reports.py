@@ -14,7 +14,7 @@ from app.money import ZERO, money
 from app.models import Partner, Payment
 from app.services.periods import month_bounds, month_label, month_options
 from app.services.settlements import list_settlements
-from app.services.summary import build_summary
+from app.services.summary import build_summary, socios_saldo
 from app.services.vat import vat_by_month, vat_totals
 from app.web import render
 
@@ -98,6 +98,7 @@ async def monthly_report(
             "hasta": hasta or "",
             "use_range": use_range,
             "summary": summary,
+            "saldo": socios_saldo(db),
             "payments": payments,
             "by_category": by_category_sorted,
             "by_type": by_type,

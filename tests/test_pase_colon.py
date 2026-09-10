@@ -97,3 +97,26 @@ def test_saldo_combines_aportes_and_pases(auth_client):
     page = auth_client.get("/socios").text
     assert "Saldo entre socios" in page
     assert "le debe" in page  # hay una deuda (al menos por la pasada recién cargada)
+
+
+def test_saldo_socios_helper_nets_ars_and_uyu(auth_client, sebas_client):
+    from app.services.summary import socios_saldo
+
+    def net():
+        with SessionLocal() as db:
+            s = socios_saldo(db)
+        return s.net_ars, s.net_uyu
+
+    ars0, uyu0 = net()
+    auth_client.post("/socios/pase-colon", data={"ars": "4000", "uyu": "600"}, follow_redirects=True)
+    sebas_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)
+    ars1, uyu1 = net()
+    # ARS: solo Jairo pagó 4000 -> +2600 ; UYU: Jairo 600 (-> +390) menos Seba 600 (-> -210) = +180
+    assert ars1 - ars0 == Decimal("2600.00")
+    assert uyu1 - uyu0 == Decimal("180.00")
+
+
+def test_saldo_appears_on_dashboard_and_reporte(auth_client):
+    auth_client.post("/socios/pase-colon", data={"ars": "0", "uyu": "600"}, follow_redirects=True)
+    assert "Saldo entre socios" in auth_client.get("/").text
+    assert "Saldo entre socios" in auth_client.get("/reporte").text

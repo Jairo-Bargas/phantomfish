@@ -336,15 +336,15 @@ def _sheet_resumen(wb: Workbook, db: Session, partners: list[Partner], date_from
         ws.cell(row=r, column=4, value=val).number_format = MONEY_FMT
 
     r += 3
-    ws.cell(row=r, column=2, value="CONTROL GLOBAL").font = TOTAL_FONT
+    ws.cell(row=r, column=2, value="CONTROL DE DATOS (no es una deuda)").font = TOTAL_FONT
     r += 1
     ws.cell(row=r, column=2, value="Suma de todos los pagos (ARS)")
     ws.cell(row=r, column=4, value=_dec(summary.total_payments_ars)).number_format = MONEY_FMT
     r += 1
-    ws.cell(row=r, column=2, value="Suma de todos los aportes (ARS)")
+    ws.cell(row=r, column=2, value="Suma de todos los aportes cargados (ARS)")
     ws.cell(row=r, column=4, value=_dec(summary.total_contributions_ars)).number_format = MONEY_FMT
     r += 1
-    ws.cell(row=r, column=2, value="Diferencia (debe ser 0)")
+    ws.cell(row=r, column=2, value="Pagos sin repartir del todo (debe ser 0)")
     diff = ws.cell(row=r, column=4, value=_dec(summary.control_difference))
     diff.number_format = MONEY_FMT
     diff.fill = OK_FILL if summary.control_ok else BAD_FILL

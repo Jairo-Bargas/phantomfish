@@ -90,11 +90,16 @@
 </div>
 
 <div class="card">
-  <h2>Aportes de los socios</h2>
+  <h2>Saldo entre socios <span class="muted small">— al día de hoy</span></h2>
+  {% include "partials/_saldo_socios.html" %}
+</div>
+
+<div class="card">
+  <h2>Aportes de los socios <span class="muted small">— {{ titulo }}</span></h2>
   <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Socio</th><th class="num">%</th><th class="num">Le correspondía</th>
-        <th class="num">Aportó</th><th class="num">Saldo</th></tr></thead>
+        <th class="num">Aportó</th><th class="num">Puso de más / de menos</th></tr></thead>
       <tbody>
         {% for ps in summary.partners %}
         <tr>
@@ -109,11 +114,13 @@
       </tbody>
     </table>
   </div>
+  <p class="hint">Solo los pagos de este período. El saldo total (con pasadas) está arriba.</p>
   <div class="control {{ 'control-ok' if summary.control_ok else 'control-bad' }}" style="margin-top:12px">
     <div><div class="k">Total pagos</div><div class="v">{{ summary.total_payments_ars | ars }}</div></div>
-    <div><div class="k">Suma aportes</div><div class="v">{{ summary.total_contributions_ars | ars }}</div></div>
+    <div><div class="k">Suma de aportes</div><div class="v">{{ summary.total_contributions_ars | ars }}</div></div>
     <div class="control-status">
-      {% if summary.control_ok %}✓ Todo cuadra{% else %}⚠ Diferencia: {{ summary.control_difference | ars }}{% endif %}
+      {% if summary.control_ok %}✓ Los aportes de cada pago cuadran
+      {% else %}⚠ Hay {{ summary.control_difference | abs | ars }} en pagos sin repartir del todo{% endif %}
     </div>
   </div>
 </div>

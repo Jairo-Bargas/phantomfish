@@ -1,0 +1,23 @@
+{# Espera: saldo (SociosSaldo). Muestra la deuda real neteada, por moneda. #}
+{% if saldo.hay_deuda %}
+<div class="control control-ok" style="margin-top:4px">
+  <div style="grid-column:1/-1;text-align:center">
+    {% if saldo.ars %}
+    <div style="font-weight:800;font-size:1.05rem">
+      {{ saldo.ars.deudor }} le debe {{ saldo.ars.monto | ars }} a {{ saldo.ars.acreedor }}
+    </div>
+    {% endif %}
+    {% if saldo.uyu %}
+    <div style="font-weight:800;font-size:1.05rem;margin-top:4px">
+      {{ saldo.uyu.deudor }} le debe {{ saldo.uyu.monto | moneda('UYU') }} a {{ saldo.uyu.acreedor }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+<p class="hint" style="margin-top:8px">
+  Pesos: aportes de pagos {{ saldo.aportes_ars | ars }} · pasadas a Colón {{ saldo.pase_ars | ars }}
+  {%- if saldo.pase_uyu %} · Uruguayos (pasadas) {{ saldo.pase_uyu | moneda('UYU') }}{% endif %}.
+</p>
+{% else %}
+<p class="small muted" style="margin-top:6px">Están a mano.</p>
+{% endif %}

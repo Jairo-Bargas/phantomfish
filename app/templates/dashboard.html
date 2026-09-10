@@ -35,16 +35,24 @@
 </div>
 
 <div class="card">
-  <h2>Control global de aportes</h2>
+  <div class="section-head"><h2>Saldo entre socios</h2><a class="small" href="/socios">Ver →</a></div>
+  {% include "partials/_saldo_socios.html" %}
+</div>
+
+<div class="card">
+  <h2>Control de aportes</h2>
+  <p class="hint">Chequeo de datos: en cada pago compartido, la suma de lo que puso cada socio
+    tiene que dar el total del pago.</p>
   <div class="control {{ 'control-ok' if summary.control_ok else 'control-bad' }}">
     <div><div class="k">Total pagos</div><div class="v">{{ summary.total_payments_ars | ars }}</div></div>
-    <div><div class="k">Suma aportes socios</div><div class="v">{{ summary.total_contributions_ars | ars }}</div></div>
+    <div><div class="k">Suma de aportes</div><div class="v">{{ summary.total_contributions_ars | ars }}</div></div>
     <div class="control-status">
-      {% if summary.control_ok %}✓ Todo cuadra{% else %}⚠ Diferencia: {{ summary.control_difference | ars }}{% endif %}
+      {% if summary.control_ok %}✓ Todo cuadra
+      {% else %}⚠ Hay {{ summary.control_difference | abs | ars }} en pagos sin repartir del todo{% endif %}
     </div>
   </div>
   {% if summary.mismatched_payments %}
-    <p class="small" style="margin-top:10px">Pagos a revisar:</p>
+    <p class="small" style="margin-top:10px">Pagos a revisar (falta cargar quién puso qué):</p>
     <div class="list">
       {% for p in summary.mismatched_payments %}
         <a class="item" href="/pagos/{{ p.id }}">
