@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Saldo entre socios{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <h1>Saldo entre socios</h1>
+</div>
+
+<div class="card">
+  {% include "partials/_saldo_socios.html" %}
+</div>
+
+<div class="card">
+  <h2>Aportes de pagos compartidos</h2>
+  <p class="hint">Cada pago donde uno puso más que su parte (o que falta repartir).
+    Los pagos 35/65 parejos no aparecen porque no generan deuda.</p>
+  {% if aportes %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Total</th><th>Pagó</th><th class="num">Deuda</th></tr></thead>
+      <tbody>
+        {% for it in aportes %}
+        <tr {% if it.unallocated %}class="bad"{% endif %}>
+          <td>{{ it.date | fecha }}</td>
+          <td style="white-space:normal"><a href="/pagos/{{ it.payment_id }}">{{ it.concept }}</a></td>
+          <td class="num">{{ it.total | ars }}</td>
+          <td>{{ it.payer_name or '—' }}</td>
+          <td class="num">
+            {% if it.unallocated %}<span class="badge badge-bad">Sin repartir</span>
+            {% elif it.a_delta > 0.5 %}{{ saldo.socio_b }} debe {{ it.a_delta | ars }}
+            {% elif it.a_delta < -0.5 %}{{ saldo.socio_a }} debe {{ (-it.a_delta) | ars }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="4" style="font-weight:700">Neto aportes (pesos)</td>
+        <td class="num" style="font-weight:700">
+          {% if saldo.aportes_ars > 0.5 %}{{ saldo.socio_b }} debe {{ saldo.aportes_ars | ars }}
+          {% elif saldo.aportes_ars < -0.5 %}{{ saldo.socio_a }} debe {{ (-saldo.aportes_ars) | ars }}
+          {% else %}$ 0,00{% endif %}
+        </td>
+      </tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted small">No hay pagos que generen deuda entre los socios.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Pasadas a Colón</h2>
+  {% if pases %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Fecha</th><th>Pagó</th><th class="num">Monto</th><th class="num">Le debe el otro</th></tr></thead>
+      <tbody>
+        {% for p in pases %}
+        <tr>
+          <td>{{ p.date | fecha }}</td>
+          <td>{{ p.paid_by.name }}</td>
+          <td class="num">
+            {% if p.amount_ars %}{{ p.amount_ars | ars }}{% endif %}{% if p.amount_ars and p.amount_uyu %}<br>{% endif %}{% if p.amount_uyu %}{{ p.amount_uyu | moneda('UYU') }}{% endif %}
+          </td>
+          <td class="num">
+            {% set pct = b_pct if p.paid_by_partner_id == socio_a_id else a_pct %}
+            {% if p.amount_ars %}{{ (p.amount_ars * pct) | ars }}{% endif %}{% if p.amount_ars and p.amount_uyu %}<br>{% endif %}{% if p.amount_uyu %}{{ (p.amount_uyu * pct) | moneda('UYU') }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="3" style="font-weight:700">Neto pasadas</td>
+        <td class="num" style="font-weight:700">
+          {% if saldo.pase_ars %}{{ saldo.pase_ars | ars }}{% endif %}{% if saldo.pase_ars and saldo.pase_uyu %}<br>{% endif %}{% if saldo.pase_uyu %}{{ saldo.pase_uyu | moneda('UYU') }}{% endif %}
+          {% if not saldo.pase_ars and not saldo.pase_uyu %}$ 0,00{% endif %}
+        </td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <p class="hint">En positivo = {{ saldo.socio_b }} le debe a {{ saldo.socio_a }}.</p>
+  {% else %}
+    <p class="muted small">Todavía no hay pasadas registradas.</p>
+  {% endif %}
+</div>
+{% endblock %}

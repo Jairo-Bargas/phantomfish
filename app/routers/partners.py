@@ -21,7 +21,7 @@ from app.money import ZERO, money
 from app.services.pases import pase_saldo
 from app.services.payments import active_partners
 from app.services.settlements import list_settlements
-from app.services.summary import socios_saldo
+from app.services.summary import aportes_breakdown, socios_saldo
 from app.web import flash, redirect, render
 
 
@@ -96,6 +96,42 @@ async def list_partners(
             "recent_settlements": recent_settlements,
             "saldo": saldo,
             "pase": pase_recap,
+        },
+        db=db,
+    )
+
+
+@router.get("/saldo")
+async def saldo_detalle(
+    request: Request,
+    partner: Partner = Depends(get_current_partner),
+    db: Session = Depends(get_db),
+):
+    """De dónde sale el saldo entre socios: pago por pago + pasada por pasada."""
+    active = active_partners(db)
+    saldo = socios_saldo(db)
+    aportes = aportes_breakdown(db, active)
+    pases = list(
+        db.scalars(select(PaseColon).order_by(PaseColon.date.desc(), PaseColon.id.desc()))
+    )
+    b_pct = (
+        Decimal(str(active[1].pct_share)) / Decimal(100) if len(active) > 1 else Decimal("0.65")
+    )
+    a_pct = (
+        Decimal(str(active[0].pct_share)) / Decimal(100) if active else Decimal("0.35")
+    )
+    return render(
+        request,
+        "partners/saldo.html",
+        {
+            "partner": partner,
+            "active_nav": "socios",
+            "saldo": saldo,
+            "aportes": aportes,
+            "pases": pases,
+            "a_pct": a_pct,
+            "b_pct": b_pct,
+            "socio_a_id": active[0].id if active else 0,
         },
         db=db,
     )

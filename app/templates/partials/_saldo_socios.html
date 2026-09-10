@@ -17,7 +17,8 @@
 <p class="hint" style="margin-top:8px">
   Pesos: aportes de pagos {{ saldo.aportes_ars | ars }} · pasadas a Colón {{ saldo.pase_ars | ars }}
   {%- if saldo.pase_uyu %} · Uruguayos (pasadas) {{ saldo.pase_uyu | moneda('UYU') }}{% endif %}.
+  <a href="/socios/saldo">Ver de dónde sale →</a>
 </p>
 {% else %}
-<p class="small muted" style="margin-top:6px">Están a mano.</p>
+<p class="small muted" style="margin-top:6px">Están a mano. <a href="/socios/saldo">Ver detalle →</a></p>
 {% endif %}

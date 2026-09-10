@@ -163,6 +163,54 @@ class SociosSaldo:
         return self.ars is not None or self.uyu is not None
 
 
+@dataclass
+class AporteItem:
+    payment_id: int
+    concept: str
+    date: dt.date
+    total: Decimal
+    payer_name: str | None       # quién lo pagó (si se sabe)
+    a_delta: Decimal             # + => el socio B le debe esto al socio A por este pago
+    unallocated: bool            # aportes no cuadran con el total
+
+
+def aportes_breakdown(db: Session, partners: list[Partner]) -> list[AporteItem]:
+    """Detalle, pago por pago, de lo que forma la deuda por aportes."""
+    out: list[AporteItem] = []
+    if len(partners) != 2:
+        return out
+    a = partners[0]
+    a_pct = to_decimal(a.pct_share, Decimal("0.01")) / Decimal(100)
+    rows = db.scalars(
+        select(Payment)
+        .options(selectinload(Payment.contributions), selectinload(Payment.paid_by))
+        .where(Payment.expense_type != "personal")
+        .order_by(Payment.date.desc(), Payment.id.desc())
+    )
+    for pay in rows:
+        total = money(pay.amount_ars)
+        contributed = money(sum((c.amount_ars for c in pay.contributions), ZERO))
+        unallocated = abs(contributed - total) > CENT
+        a_put = money(
+            sum((c.amount_ars for c in pay.contributions if c.partner_id == a.id), ZERO)
+        )
+        delta = ZERO if unallocated else money(a_put - money(total * a_pct))
+        if not unallocated and abs(delta) <= CENT:
+            continue  # 35/65 limpio: no aporta a la deuda
+        out.append(
+            AporteItem(
+                payment_id=pay.id,
+                concept=pay.concept,
+                date=pay.date,
+                total=total,
+                payer_name=pay.paid_by.name if pay.paid_by else None,
+                a_delta=delta,
+                unallocated=unallocated,
+            )
+        )
+    return out
+
+
 def aportes_debt(db: Session, partners: list[Partner]) -> Decimal:
     """Deuda entre socios por los pagos compartidos, en ARS.
 
