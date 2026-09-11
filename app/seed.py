@@ -12,7 +12,9 @@ from app.config import get_settings
 from app.constants import PAYMENT_CATEGORIES
 from app.database import Base, SessionLocal, engine
 from app.migrate import run_migrations
-from app.models import Category, Partner
+from app.models import Category, Partner, Product
+
+SEED_PRODUCTS = ["Señuelo Banana", "Señuelo Crank", "Señuelo Sub Superficie"]
 
 
 def create_all() -> None:
@@ -25,6 +27,15 @@ def seed_categories(db: Session) -> None:
         return
     for order, (code, label) in enumerate(PAYMENT_CATEGORIES, start=1):
         db.add(Category(code=code, label=label, active=True, sort_order=order * 10))
+    db.commit()
+
+
+def seed_products(db: Session) -> None:
+    """Carga inicial de productos. No pisa los que el usuario haya agregado/editado."""
+    if db.scalar(select(Product).limit(1)):
+        return
+    for name in SEED_PRODUCTS:
+        db.add(Product(name=name, active=True))
     db.commit()
 
 
@@ -69,6 +80,7 @@ def init_db() -> None:
     with SessionLocal() as db:
         seed_partners(db)
         seed_categories(db)
+        seed_products(db)
         ensure_owner(db)
 
 

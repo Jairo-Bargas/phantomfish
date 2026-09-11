@@ -351,6 +351,19 @@
       });
       if (totalEl) totalEl.textContent = (currency === "USD" ? fmtUSD : fmtARS)(round2(total));
     }
+    function syncProduct(row) {
+      const sel = $("[data-role=product-select]", row);
+      const custom = $("[data-role=product-custom]", row);
+      const back = $("[data-role=product-back]", row);
+      if (!sel || !custom) return;
+      const useCustom = sel.value === "__custom__";
+      sel.hidden = useCustom;
+      sel.disabled = useCustom;
+      custom.hidden = !useCustom;
+      custom.disabled = !useCustom;
+      if (back) back.hidden = !useCustom;
+      if (useCustom) custom.focus();
+    }
     function wire(row) {
       $$("[data-name=item_qty], [data-name=item_price]", row).forEach((el) =>
         el.addEventListener("input", recalc)
@@ -361,6 +374,17 @@
           row.remove();
           renumber();
           recalc();
+        });
+      const sel = $("[data-role=product-select]", row);
+      if (sel) sel.addEventListener("change", () => syncProduct(row));
+      const back = $("[data-role=product-back]", row);
+      if (back)
+        back.addEventListener("click", () => {
+          const s = $("[data-role=product-select]", row);
+          const custom = $("[data-role=product-custom]", row);
+          if (s) s.value = "";
+          if (custom) custom.value = "";
+          syncProduct(row);
         });
     }
     if (addBtn && tpl) {

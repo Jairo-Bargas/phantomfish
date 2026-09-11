@@ -69,6 +69,7 @@ from app.routers import (  # noqa: E402
     orders,
     partners,
     payments,
+    products,
     purchases,
     reports,
     sales,
@@ -86,6 +87,7 @@ app.include_router(reports.router)
 app.include_router(settlements.router)
 app.include_router(partners.router)
 app.include_router(categories.router)
+app.include_router(products.router)
 app.include_router(backups_router.router)
 app.include_router(documents.router)
 app.include_router(exchange.router)

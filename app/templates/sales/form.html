@@ -61,13 +61,26 @@
 
     <div id="items" data-currency="ARS">
       {% for it in items %}
+      {% set is_known = it.product_name in product_names %}
       <div class="item-row card card-tight">
         <div class="row-between">
           <strong class="item-row-n">#</strong>
           <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
         </div>
         <div class="field"><label>Producto</label>
-          <input data-name="item_name" value="{{ it.product_name }}"></div>
+          <select data-name="item_name" data-role="product-select" {{ 'hidden disabled' if it.product_name and not is_known }}>
+            <option value="">Elegí un producto…</option>
+            {% for p in products %}
+            <option value="{{ p.name }}" {{ 'selected' if it.product_name == p.name }}>{{ p.name }}</option>
+            {% endfor %}
+            <option value="__custom__" {{ 'selected' if it.product_name and not is_known }}>Otro (escribir)</option>
+          </select>
+          <input data-name="item_name" data-role="product-custom" placeholder="Nombre del producto"
+                 value="{{ it.product_name if it.product_name and not is_known else '' }}"
+                 {{ '' if it.product_name and not is_known else 'hidden disabled' }}>
+          <button type="button" class="btn btn-ghost btn-sm" data-role="product-back" style="margin-top:6px"
+                  {{ '' if it.product_name and not is_known else 'hidden' }}>← Elegir de la lista</button>
+        </div>
         <div class="grid-2">
           <div class="field"><label>Cantidad</label>
             <input data-name="item_qty" inputmode="decimal" value="{{ it.quantity }}"></div>
@@ -84,7 +97,17 @@
             <strong class="item-row-n">#</strong>
             <button type="button" class="btn btn-danger btn-sm item-del">✕</button>
           </div>
-          <div class="field"><label>Producto</label><input data-name="item_name"></div>
+          <div class="field"><label>Producto</label>
+            <select data-name="item_name" data-role="product-select">
+              <option value="">Elegí un producto…</option>
+              {% for p in products %}
+              <option value="{{ p.name }}">{{ p.name }}</option>
+              {% endfor %}
+              <option value="__custom__">Otro (escribir)</option>
+            </select>
+            <input data-name="item_name" data-role="product-custom" placeholder="Nombre del producto" hidden disabled>
+            <button type="button" class="btn btn-ghost btn-sm" data-role="product-back" style="margin-top:6px" hidden>← Elegir de la lista</button>
+          </div>
           <div class="grid-2">
             <div class="field"><label>Cantidad</label>
               <input data-name="item_qty" inputmode="decimal"></div>

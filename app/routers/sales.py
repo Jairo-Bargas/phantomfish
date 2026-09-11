@@ -17,6 +17,7 @@ from app.money import CENT, ZERO, dsum, money
 from app.models import Partner, Sale, SaleItem
 from app.services.documents import attach_files, list_documents
 from app.services.payments import parse_date
+from app.services.products import active_products
 from app.services.vat import DEFAULT_VAT_RATE, parse_rate, vat_from_total
 from app.web import flash, redirect, render
 
@@ -74,6 +75,11 @@ def _apply_vat(sale: Sale, form: dict) -> None:
     sale.vat_amount = iva
     sale.vat_net = net
     sale.vat_rate = rate_pct
+
+
+def _product_ctx(db: Session) -> dict:
+    products = active_products(db)
+    return {"products": products, "product_names": {p.name for p in products}}
 
 
 def _parse_items(form: dict) -> list[dict]:
@@ -134,6 +140,7 @@ async def new_sale(
                 "vat_rate": "21",
             },
             "items": [],
+            **_product_ctx(db),
         },
     )
 
@@ -152,10 +159,10 @@ async def create_sale(
         items = _parse_items(form)
     except ValueError as exc:
         flash(request, str(exc), "error")
-        return _rerender(request, partner, form, status_code=400)
+        return _rerender(request, partner, form, db, status_code=400)
     if not items:
         flash(request, "Agregá al menos un producto vendido.", "error")
-        return _rerender(request, partner, form, status_code=400)
+        return _rerender(request, partner, form, db, status_code=400)
 
     for it in items:
         sale.items.append(SaleItem(**it))
@@ -163,7 +170,7 @@ async def create_sale(
         _apply_vat(sale, form)
     except ValueError as exc:
         flash(request, str(exc), "error")
-        return _rerender(request, partner, form, status_code=400)
+        return _rerender(request, partner, form, db, status_code=400)
     db.add(sale)
     db.flush()
     saved, errors = await attach_files(
@@ -200,7 +207,7 @@ def _build_from_form(form: dict) -> Sale:
     )
 
 
-def _rerender(request, partner, form, *, status_code=200, sale=None):
+def _rerender(request, partner, form, db, *, status_code=200, sale=None):
     return render(
         request,
         "sales/form.html",
@@ -210,6 +217,7 @@ def _rerender(request, partner, form, *, status_code=200, sale=None):
             "sale": sale,
             "form": form,
             "items": _parse_items(form),
+            **_product_ctx(db),
         },
         status_code=status_code,
     )
@@ -276,6 +284,7 @@ async def edit_sale(
                 }
                 for i in sale.items
             ],
+            **_product_ctx(db),
         },
     )
 
@@ -298,10 +307,10 @@ async def update_sale(
         items = _parse_items(form)
     except ValueError as exc:
         flash(request, str(exc), "error")
-        return _rerender(request, partner, form, status_code=400, sale=sale)
+        return _rerender(request, partner, form, db, status_code=400, sale=sale)
     if not items:
         flash(request, "Agregá al menos un producto vendido.", "error")
-        return _rerender(request, partner, form, status_code=400, sale=sale)
+        return _rerender(request, partner, form, db, status_code=400, sale=sale)
 
     for field in (
         "date", "customer", "channel", "payment_method", "status", "invoice_number", "notes",
@@ -314,7 +323,7 @@ async def update_sale(
         _apply_vat(sale, form)  # usa sale.total_ars con los ítems nuevos
     except ValueError as exc:
         flash(request, str(exc), "error")
-        return _rerender(request, partner, form, status_code=400, sale=sale)
+        return _rerender(request, partner, form, db, status_code=400, sale=sale)
     record(db, obj=sale, action="update", changed_by=partner.username,
            summary=f"Edición de venta #{sale.id}", old=before)
     db.commit()

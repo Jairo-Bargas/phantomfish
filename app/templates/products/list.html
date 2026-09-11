@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Productos{% endblock %}
+{% block content %}
+<div class="section-head">
+  <a class="small" href="/socios">← Socios</a>
+  <h1>Productos</h1>
+</div>
+
+<div class="card">
+  <form method="post" action="/productos" class="field-inline">
+    <div class="field" style="margin-bottom:0">
+      <label for="name">Nuevo producto</label>
+      <input id="name" name="name" required placeholder="Ej: Señuelo Popper" maxlength="200">
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Agregar</button>
+  </form>
+  <div class="hint">Aparecen en el desplegable de "Producto" al cargar una venta.
+    Podés renombrarlos u ocultarlos cuando quieras.</div>
+</div>
+
+<div class="card">
+  <div class="list">
+    {% for p in products_all %}
+    <div class="item">
+      <div class="item-top">
+        <form method="post" action="/productos/{{ p.id }}" class="field-inline" style="flex:1">
+          <input name="name" value="{{ p.name }}" maxlength="200"
+                 style="{{ 'opacity:.5' if not p.active }}">
+          <button class="btn btn-ghost btn-sm" type="submit" title="Guardar nombre">✓</button>
+        </form>
+      </div>
+      <div class="item-sub">
+        {% if p.active %}<span class="badge badge-ok">Activo</span>
+        {% else %}<span class="badge">Oculto</span>{% endif %}
+        <span>{{ usage.get(p.name, 0) }} venta(s)</span>
+        <form method="post" action="/productos/{{ p.id }}" style="display:inline">
+          <input type="hidden" name="accion" value="toggle">
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {{ 'Ocultar' if p.active else 'Activar' }}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+      <p class="muted small">Todavía no hay productos cargados.</p>
+    {% endfor %}
+  </div>
+  <p class="hint">Ocultar un producto no borra las ventas que ya lo usan. Renombrarlo tampoco
+    les cambia el nombre a las ventas viejas — quedan con el nombre que tenían al cargarlas.</p>
+</div>
+{% endblock %}
