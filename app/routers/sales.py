@@ -16,7 +16,7 @@ from app.database import get_db
 from app.money import CENT, ZERO, dsum, money
 from app.models import Partner, Sale, SaleItem
 from app.services.documents import attach_files, list_documents
-from app.services.payments import parse_date
+from app.services.payments import active_partners, default_split, parse_date
 from app.services.products import active_products
 from app.services.vat import DEFAULT_VAT_RATE, parse_rate, vat_from_total
 from app.web import flash, redirect, render
@@ -112,10 +112,19 @@ async def list_sales(
         )
     )
     total_ars = dsum(s.total_ars for s in sales)
+    partners = active_partners(db)
+    split = default_split(db, total_ars)
+    partner_split = [(p, split.get(p.id, ZERO)) for p in partners]
     return render(
         request,
         "sales/list.html",
-        {"partner": partner, "active_nav": "ventas", "sales": sales, "total_ars": total_ars},
+        {
+            "partner": partner,
+            "active_nav": "ventas",
+            "sales": sales,
+            "total_ars": total_ars,
+            "partner_split": partner_split,
+        },
     )
 
 

@@ -10,6 +10,16 @@
   <div class="k">Total vendido (ARS)</div><div class="v">{{ total_ars | ars }}</div>
 </div>
 
+{% if partner_split %}
+<div class="card" style="margin-bottom:14px">
+  <div class="kv-row" style="font-weight:600">Reparto según % de cada socio</div>
+  {% for p, monto in partner_split %}
+  <div class="kv-row"><span class="k">{{ p.name }} ({{ p.pct_share | int }}%)</span>
+    <span class="v">{{ monto | ars }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if sales %}
 <div class="list">
   {% for s in sales %}

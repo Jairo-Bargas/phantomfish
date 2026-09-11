@@ -204,6 +204,7 @@ textarea { min-height: 74px; resize: vertical; }
 
 /* ---------- table ---------- */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; border: 1px solid var(--border); }
+.table-wrap-scroll { max-height: 55vh; overflow-y: auto; }
 table.data { border-collapse: collapse; width: 100%; font-size: .82rem; background: var(--surface); }
 table.data th, table.data td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 table.data th { background: var(--surface-2); position: sticky; top: 0; font-size: .74rem; text-transform: uppercase; letter-spacing: .3px; color: var(--text-soft); }

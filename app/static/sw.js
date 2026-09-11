@@ -2,7 +2,7 @@
    Estrategia RED PRIMERO para /static/: siempre trae la versión nueva; el
    caché solo se usa si no hay internet. Así los cambios de la app llegan
    enseguida, sin quedar pegados a una versión vieja. */
-const CACHE = "phantomfish-shell-v6";
+const CACHE = "phantomfish-shell-v7";
 const SHELL = ["/static/styles.css", "/static/app.js", "/static/logo.png", "/static/logo-mark.png", "/static/icon-192.png"];
 
 self.addEventListener("install", (e) => {

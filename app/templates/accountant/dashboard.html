@@ -38,7 +38,7 @@
 <div class="card">
   <h2>Facturas recibidas — Pagos ({{ payments | length }})</h2>
   {% if payments %}
-  <div class="table-wrap">
+  <div class="table-wrap table-wrap-scroll">
     <table class="data">
       <thead><tr>
         <th>Fecha</th><th>Concepto</th><th>Categoría</th><th>N° factura</th>
@@ -78,7 +78,7 @@
 <div class="card">
   <h2>Facturas emitidas — Ventas ({{ sales | length }})</h2>
   {% if sales %}
-  <div class="table-wrap">
+  <div class="table-wrap table-wrap-scroll">
     <table class="data">
       <thead><tr>
         <th>Fecha</th><th>Cliente / Canal</th><th>N° factura</th>
