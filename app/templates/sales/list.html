@@ -20,6 +20,26 @@
 </div>
 {% endif %}
 
+{% if product_totals %}
+<div class="card" style="margin-bottom:14px">
+  <h2>Vendidos por producto</h2>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Total ARS</th></tr></thead>
+      <tbody>
+        {% for p in product_totals %}
+        <tr>
+          <td>{{ p.name }}</td>
+          <td class="num">{{ p.quantity | qty }}</td>
+          <td class="num">{{ p.total_ars | ars }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 {% if sales %}
 <div class="list">
   {% for s in sales %}

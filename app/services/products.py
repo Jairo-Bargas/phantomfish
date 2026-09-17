@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from decimal import Decimal
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Product, SaleItem
+from app.money import ZERO
+from app.models import Product, Sale, SaleItem
 
 
 def all_products(db: Session) -> list[Product]:
@@ -38,3 +42,24 @@ def sales_using(db: Session, name: str) -> int:
         db.scalar(select(func.count()).select_from(SaleItem).where(SaleItem.product_name == name))
         or 0
     )
+
+
+@dataclass
+class ProductTotal:
+    name: str
+    quantity: Decimal
+    total_ars: Decimal
+
+
+def totals_by_product(sales: list[Sale]) -> list[ProductTotal]:
+    """Suma cantidad y monto vendido de cada producto, a partir de ventas ya cargadas
+    (con `.items` -- se recorren en Python, sin pegarle de nuevo a la base)."""
+    agg: dict[str, dict[str, Decimal]] = {}
+    for sale in sales:
+        for it in sale.items:
+            row = agg.setdefault(it.product_name, {"quantity": ZERO, "total_ars": ZERO})
+            row["quantity"] += it.quantity
+            row["total_ars"] += it.total_ars
+    totals = [ProductTotal(name=n, quantity=v["quantity"], total_ars=v["total_ars"]) for n, v in agg.items()]
+    totals.sort(key=lambda p: p.quantity, reverse=True)
+    return totals
