@@ -115,7 +115,13 @@ async def list_sales(
     partners = active_partners(db)
     split = default_split(db, total_ars)
     partner_split = [(p, split.get(p.id, ZERO)) for p in partners]
-    product_totals = totals_by_product(sales)
+    # Los comprobantes sin venta real (notas de crédito, ajustes) se cargan como una
+    # "venta" con total $0 solo para poder adjuntar el archivo — no cuentan como venta
+    # ni entran en el desglose por producto.
+    ventas_reales = [s for s in sales if s.total_ars > ZERO]
+    ventas_count = len(ventas_reales)
+    ventas_comprobante = len(sales) - ventas_count
+    product_totals = totals_by_product(ventas_reales)
     return render(
         request,
         "sales/list.html",
@@ -126,6 +132,8 @@ async def list_sales(
             "total_ars": total_ars,
             "product_totals": product_totals,
             "partner_split": partner_split,
+            "ventas_count": ventas_count,
+            "ventas_comprobante": ventas_comprobante,
         },
     )
 

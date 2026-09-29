@@ -6,9 +6,20 @@
   <a class="btn btn-primary btn-sm" href="/ventas/nueva">+ Nueva</a>
 </div>
 
-<div class="tile" style="margin-bottom:14px">
-  <div class="k">Total vendido (ARS)</div><div class="v">{{ total_ars | ars }}</div>
+<div class="tiles" style="margin-bottom:14px">
+  <div class="tile">
+    <div class="k">Cantidad de ventas</div><div class="v">{{ ventas_count }}</div>
+  </div>
+  <div class="tile">
+    <div class="k">Total vendido (ARS)</div><div class="v">{{ total_ars | ars }}</div>
+  </div>
 </div>
+{% if ventas_comprobante %}
+<p class="hint" style="margin:-8px 0 14px">
+  No cuenta {{ ventas_comprobante }} comprobante{{ 's' if ventas_comprobante != 1 }}
+  sin venta real (nota de crédito / ajuste cargado en $0 solo para adjuntar el archivo).
+</p>
+{% endif %}
 
 {% if partner_split %}
 <div class="card" style="margin-bottom:14px">
@@ -53,6 +64,7 @@
         {% if s.channel %}· {{ label_for('sale_channel', s.channel) }}{% endif %}
         · <span class="badge">{{ label_for('sale_status', s.status) }}</span>
         · {{ s.items | length }} ítem(s)
+        {% if s.total_ars <= 0 %}· <span class="badge">🧾 Solo comprobante, no cuenta</span>{% endif %}
       </div>
     </a>
   {% endfor %}
