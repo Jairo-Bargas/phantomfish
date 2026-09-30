@@ -100,3 +100,30 @@ def test_ventas_total_por_producto_usa_el_precio_real_de_cada_venta(auth_client)
     assert after_qty - before_qty == Decimal("6")
     # 2×8.900 + 3×7.900 + 1×11.900 = 53.400 -- no 6 × un precio cualquiera
     assert after_total - before_total == Decimal("53400.00")
+
+
+def test_agrupar_por_palabra_clave_no_pierde_ni_duplica_nada(auth_client):
+    """La agrupación solo junta renglones -- no puede cambiar la cantidad ni la
+    plata total. Sumar todo agrupado tiene que dar exactamente igual que sumar
+    todos los ítems de venta uno por uno, sin agrupar."""
+    # variantes de sobra + un producto ajeno, que no debería mezclarse con nada
+    _sale(auth_client, customer="Chequeo 1", item_name_0="BANANAS", item_qty_0="5", item_price_0="7900")
+    _sale(auth_client, customer="Chequeo 2", item_name_0="SEÑUELO BANANA", item_qty_0="3", item_price_0="9500")
+    _sale(auth_client, customer="Chequeo 3", item_name_0="CRANK PALA CORTA", item_qty_0="1", item_price_0="15000")
+    _sale(auth_client, customer="Chequeo 4", item_name_0="SUB SUPERFICIE", item_qty_0="2", item_price_0="10800")
+    _sale(auth_client, customer="Chequeo 5", item_name_0="Popper importado", item_qty_0="4", item_price_0="4000")
+
+    with SessionLocal() as db:
+        sales = list(db.scalars(select(Sale).options(selectinload(Sale.items))))
+
+    raw_qty = sum((it.quantity for s in sales for it in s.items), Decimal("0"))
+    raw_total = sum((it.total_ars for s in sales for it in s.items), Decimal("0"))
+
+    grouped = totals_by_product(sales)
+    grouped_qty = sum((p.quantity for p in grouped), Decimal("0"))
+    grouped_total = sum((p.total_ars for p in grouped), Decimal("0"))
+
+    assert grouped_qty == raw_qty
+    assert grouped_total == raw_total
+    # el producto ajeno no se mezcló con ningún señuelo
+    assert any(p.name == "Popper importado" for p in grouped)
