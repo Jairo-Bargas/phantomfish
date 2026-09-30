@@ -63,7 +63,7 @@
         {{ s.date | fecha }}
         {% if s.channel %}· {{ label_for('sale_channel', s.channel) }}{% endif %}
         · <span class="badge">{{ label_for('sale_status', s.status) }}</span>
-        · {{ s.items | length }} ítem(s)
+        · {{ s.items | length }} tipo(s) · {{ s.items | sum(attribute='quantity') | qty }} unid.
         {% if s.total_ars <= 0 %}· <span class="badge">🧾 Solo comprobante, no cuenta</span>{% endif %}
       </div>
     </a>

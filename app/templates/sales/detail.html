@@ -25,7 +25,8 @@
   </div>
   <div class="tiles">
     <div class="tile"><div class="k">Total ARS</div><div class="v">{{ sale.total_ars | ars }}</div></div>
-    <div class="tile"><div class="k">Ítems</div><div class="v">{{ sale.items | length }}</div></div>
+    <div class="tile"><div class="k">Tipos</div><div class="v">{{ sale.items | length }}</div></div>
+    <div class="tile"><div class="k">Unidades</div><div class="v">{{ sale.items | sum(attribute='quantity') | qty }}</div></div>
     {% if sale.vat_amount is not none %}
     <div class="tile"><div class="k">Neto gravado</div><div class="v">{{ sale.net_amount | ars }}</div></div>
     <div class="tile">
