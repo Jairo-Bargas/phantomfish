@@ -51,13 +51,36 @@ class ProductTotal:
     total_ars: Decimal
 
 
+# Antes de tener el desplegable, el nombre del producto se escribía a mano en cada
+# venta -> quedaron muchas variantes del mismo señuelo ("BANANAS", "Bananas",
+# "Crank", "CRANK PALA CORTA", "Sub", "SUB SUPERFICIE", etc.). Para que el conteo
+# junte todo bajo el producto real, se agrupa por palabra clave (sin tocar el
+# nombre guardado en cada venta vieja, que sigue viéndose tal cual se cargó).
+_PRODUCT_ALIASES: list[tuple[str, str]] = [
+    ("banana", "Señuelo Banana"),
+    ("crank", "Señuelo Crank"),
+    ("sub", "Señuelo Sub Superficie"),
+]
+
+
+def canonical_product_name(raw: str) -> str:
+    norm = (raw or "").strip().lower()
+    for keyword, canonical in _PRODUCT_ALIASES:
+        if keyword in norm:
+            return canonical
+    return (raw or "").strip()
+
+
 def totals_by_product(sales: list[Sale]) -> list[ProductTotal]:
     """Suma cantidad y monto vendido de cada producto, a partir de ventas ya cargadas
-    (con `.items` -- se recorren en Python, sin pegarle de nuevo a la base)."""
+    (con `.items` -- se recorren en Python, sin pegarle de nuevo a la base). Los
+    nombres viejos escritos a mano se agrupan bajo el producto real (ver
+    `canonical_product_name`)."""
     agg: dict[str, dict[str, Decimal]] = {}
     for sale in sales:
         for it in sale.items:
-            row = agg.setdefault(it.product_name, {"quantity": ZERO, "total_ars": ZERO})
+            name = canonical_product_name(it.product_name)
+            row = agg.setdefault(name, {"quantity": ZERO, "total_ars": ZERO})
             row["quantity"] += it.quantity
             row["total_ars"] += it.total_ars
     totals = [ProductTotal(name=n, quantity=v["quantity"], total_ars=v["total_ars"]) for n, v in agg.items()]
